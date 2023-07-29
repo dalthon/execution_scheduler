@@ -1,6 +1,6 @@
 SH ?= ash
 
-IMAGE_NAME := goroutine-scheduler
+IMAGE_NAME := execution-scheduler
 DOCKER_RUN := docker run --rm -v `pwd`:/app -it
 DOCKER_BIN := $(shell which docker)
 
@@ -23,6 +23,10 @@ build:
 shell: ## Runs sh in a given container
 	@$(call docker_run,$(IMAGE_NAME),$(SH))
 .PHONY: shell
+
+test: ## Runs tests
+	@$(call docker_run,$(IMAGE_NAME),go test)
+.PHONY: test
 
 debug: ## Runs debug/main.go
 	@$(call docker_run,$(IMAGE_NAME),go run debug/main.go)

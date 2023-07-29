@@ -1,8 +1,9 @@
-package goroutine_scheduler
+package execution_scheduler
 
 import "container/heap"
 
 // Attention: ExecutionQueue is not thread safe!
+// TODO: Cover ExecutionQueue tests
 type ExecutionQueue struct {
 	queue PriorityQueue
 }
@@ -13,16 +14,17 @@ func NewExecutionQueue() *ExecutionQueue {
 	}
 }
 
-func (queue *ExecutionQueue) Push(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) {
-	heap.Push(
-		&queue.queue,
-		NewExecution(
-			handler,
-			errorHandler,
-			kind,
-			priority,
-		),
+func (queue *ExecutionQueue) Push(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
+	execution := NewExecution(
+		handler,
+		errorHandler,
+		kind,
+		priority,
 	)
+
+	heap.Push(&queue.queue, execution)
+
+	return execution
 }
 
 func (queue *ExecutionQueue) Size() int {

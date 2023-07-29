@@ -1,8 +1,11 @@
-package goroutine_scheduler
+package execution_scheduler
 
 import (
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/jonboulle/clockwork"
 )
 
 type ExecutionKind uint64
@@ -35,6 +38,13 @@ const (
 	ErrorEvent
 )
 
+type schedulerInterface interface {
+	getLock() *sync.Mutex
+	getClock() clockwork.Clock
+	signal(event ExecutionEvent)
+	remove(execution *Execution)
+}
+
 type Scheduler struct {
 	waitGroup       *sync.WaitGroup
 	lock            sync.Mutex
@@ -43,6 +53,7 @@ type Scheduler struct {
 	parallelQueue   *ExecutionQueue
 	serialQueue     *ExecutionQueue
 	events          chan ExecutionEvent
+	clock           clockwork.Clock
 }
 
 func NewScheduler(waitGroup *sync.WaitGroup) *Scheduler {
@@ -53,6 +64,7 @@ func NewScheduler(waitGroup *sync.WaitGroup) *Scheduler {
 		parallelQueue:   NewExecutionQueue(),
 		serialQueue:     NewExecutionQueue(),
 		events:          make(chan ExecutionEvent),
+		clock:           clockwork.NewRealClock(),
 	}
 	waitGroup.Add(1)
 	go scheduler.eventLoop()
@@ -64,15 +76,16 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
+	var execution *Execution
 	if kind == Parallel {
-		scheduler.parallelQueue.Push(
+		execution = scheduler.parallelQueue.Push(
 			handler,
 			errorHandler,
 			kind,
 			priority,
 		)
 	} else {
-		scheduler.serialQueue.Push(
+		execution = scheduler.serialQueue.Push(
 			handler,
 			errorHandler,
 			kind,
@@ -80,7 +93,9 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 		)
 	}
 
-	scheduler.events <- ScheduledEvent
+	execution.setExpiration(scheduler, time.Duration(2)*time.Second)
+
+	scheduler.signal(ScheduledEvent)
 }
 
 func (scheduler *Scheduler) Run() {
@@ -89,7 +104,6 @@ func (scheduler *Scheduler) Run() {
 
 func (scheduler *Scheduler) eventLoop() {
 	for {
-		fmt.Println("Event!")
 		switch <-scheduler.events {
 		case PreparedEvent:
 			fmt.Println("Received PreparedEvent")
@@ -169,11 +183,33 @@ func (scheduler *Scheduler) execute() {
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
 		scheduler.parallelRunning += 1
 		go execution.call(scheduler)
+		return
 	}
 
 	for execution := scheduler.serialQueue.Pop(); execution != nil; execution = scheduler.serialQueue.Pop() {
 		scheduler.parallelRunning += 1
 		go execution.call(scheduler)
+		return
+	}
+}
+
+func (scheduler *Scheduler) getLock() *sync.Mutex {
+	return &scheduler.lock
+}
+
+func (scheduler *Scheduler) getClock() clockwork.Clock {
+	return scheduler.clock
+}
+
+func (scheduler *Scheduler) signal(event ExecutionEvent) {
+	scheduler.events <- event
+}
+
+func (scheduler *Scheduler) remove(execution *Execution) {
+	if execution.kind == Parallel {
+		scheduler.parallelQueue.Remove(execution)
+	} else {
+		scheduler.serialQueue.Remove(execution)
 	}
 }
 
@@ -188,17 +224,17 @@ func (scheduler *Scheduler) isScheduled() bool {
 
 // TODO: add prepare callback, run it and then use it here
 func (scheduler *Scheduler) runPrepareCallback() {
-	scheduler.events <- PreparedEvent
+	scheduler.signal(PreparedEvent)
 }
 
 // TODO: add inactive callback, run it and then use it here
 func (scheduler *Scheduler) runOnInactive() {
-	scheduler.events <- WakedEvent
+	scheduler.signal(WakedEvent)
 }
 
 // TODO: add closing callback, run it and then use it here
 func (scheduler *Scheduler) runOnClosingCallback() {
-	scheduler.events <- ClosingEvent
+	scheduler.signal(ClosingEvent)
 }
 
 // TODO: add close callback, run it and then use it here
