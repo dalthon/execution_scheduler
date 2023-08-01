@@ -110,7 +110,7 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 
 // TODO: Think about not having it
 func (scheduler *Scheduler) Run() {
-	go scheduler.runPrepareCallback()
+	scheduler.runPrepareCallback()
 }
 
 // TODO: scheduler.ForceClose()
@@ -122,7 +122,9 @@ func (scheduler *Scheduler) ForceClose() {
 
 func (scheduler *Scheduler) eventLoop() {
 	for {
-		switch <-scheduler.events {
+		event := <-scheduler.events
+		scheduler.lock.Lock()
+		switch event {
 		case PreparedEvent:
 			scheduler.setStatus(ActiveStatus)
 		case ScheduledEvent:
@@ -142,13 +144,13 @@ func (scheduler *Scheduler) eventLoop() {
 				}
 			}
 		case WakedEvent:
-			if scheduler.isScheduled() {
+			if scheduler.isRunning() || scheduler.isScheduled() {
 				scheduler.setStatus(ActiveStatus)
 			} else {
 				scheduler.setStatus(ClosingStatus)
 			}
 		case ClosingEvent:
-			if scheduler.isScheduled() {
+			if scheduler.isRunning() || scheduler.isScheduled() {
 				scheduler.setStatus(ActiveStatus)
 			} else {
 				scheduler.setStatus(ClosedStatus)
@@ -156,6 +158,7 @@ func (scheduler *Scheduler) eventLoop() {
 		case ErrorEvent:
 			scheduler.setStatus(ErrorStatus)
 		}
+		scheduler.lock.Unlock()
 	}
 }
 
@@ -166,36 +169,31 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 
 	switch scheduler.status {
 	case InactiveStatus:
-		scheduler.lock.Lock()
 		if scheduler.inactivityTimer != nil {
 			scheduler.inactivityTimer.Stop()
 			scheduler.inactivityTimer = nil
 		}
-		scheduler.lock.Unlock()
 	}
 
 	scheduler.status = status
 	switch scheduler.status {
 	case PendingStatus:
-		go scheduler.runPrepareCallback()
+		scheduler.runPrepareCallback()
 	case ActiveStatus:
 		scheduler.execute()
 	case InactiveStatus:
 		scheduler.runOnInactive()
 	case ClosingStatus:
-		go scheduler.runOnClosingCallback()
+		scheduler.runOnClosingCallback()
 	case ClosedStatus:
-		go scheduler.runOnCloseCallback()
+		scheduler.runOnCloseCallback()
 	case ErrorStatus:
-		go scheduler.runOnErrorCallback()
+		scheduler.runOnErrorCallback()
 	}
 }
 
 // TODO: Handle execution logic properly
 func (scheduler *Scheduler) execute() {
-	scheduler.lock.Lock()
-	defer scheduler.lock.Unlock()
-
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
 		scheduler.parallelRunning += 1
 		go execution.call(scheduler)
@@ -247,12 +245,10 @@ func (scheduler *Scheduler) runOnInactive() {
 		return
 	}
 
-	scheduler.lock.Lock()
 	scheduler.inactivityTimer = scheduler.clock.AfterFunc(
 		scheduler.options.inactivityDelay,
 		scheduler.wakeFromInactivity,
 	)
-	scheduler.lock.Unlock()
 }
 
 func (scheduler *Scheduler) wakeFromInactivity() {
