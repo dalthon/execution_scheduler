@@ -10,7 +10,7 @@ import (
 type ExecutionStatus uint64
 
 const (
-	ExecutionPending ExecutionStatus = iota
+	ExecutionScheduled ExecutionStatus = iota
 	ExecutionRunning
 	ExecutionExpired
 	ExecutionFinished
@@ -28,7 +28,7 @@ type Execution struct {
 
 func NewExecution(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
 	return &Execution{
-		status:       ExecutionPending,
+		status:       ExecutionScheduled,
 		handler:      handler,
 		errorHandler: errorHandler,
 		priority:     priority,
@@ -42,7 +42,7 @@ func (execution *Execution) call(scheduler schedulerInterface) bool {
 	scheduler.getLock().Lock()
 	defer scheduler.getLock().Unlock()
 
-	if execution.status == ExecutionPending {
+	if execution.status == ExecutionScheduled {
 		execution.status = ExecutionRunning
 		if execution.timer != nil {
 			execution.timer.Stop()
@@ -85,7 +85,7 @@ func (execution *Execution) expire(scheduler schedulerInterface) bool {
 	scheduler.getLock().Lock()
 	defer scheduler.getLock().Unlock()
 
-	if execution.status == ExecutionPending {
+	if execution.status == ExecutionScheduled {
 		execution.status = ExecutionExpired
 		execution.timer = nil
 		scheduler.remove(execution)

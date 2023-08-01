@@ -1,9 +1,7 @@
 package execution_scheduler
 
 import (
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/jonboulle/clockwork"
 )
@@ -43,6 +41,7 @@ type schedulerInterface interface {
 	getClock() clockwork.Clock
 	signal(event ExecutionEvent)
 	remove(execution *Execution)
+	Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution
 }
 
 type Scheduler struct {
@@ -63,16 +62,18 @@ func NewScheduler(waitGroup *sync.WaitGroup) *Scheduler {
 		status:          PendingStatus,
 		parallelQueue:   NewExecutionQueue(),
 		serialQueue:     NewExecutionQueue(),
-		events:          make(chan ExecutionEvent),
+		events:          make(chan ExecutionEvent, 16),
 		clock:           clockwork.NewRealClock(),
 	}
-	waitGroup.Add(1)
+	if waitGroup != nil {
+		waitGroup.Add(1)
+	}
 	go scheduler.eventLoop()
 
 	return scheduler
 }
 
-func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) {
+func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
@@ -93,23 +94,29 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 		)
 	}
 
-	execution.setExpiration(scheduler, time.Duration(2)*time.Second)
-
 	scheduler.signal(ScheduledEvent)
+
+	return execution
 }
 
+// TODO: Think about not having it
 func (scheduler *Scheduler) Run() {
 	go scheduler.runPrepareCallback()
+}
+
+// TODO: scheduler.ForceClose()
+func (scheduler *Scheduler) ForceClose() {
+	if scheduler.waitGroup != nil {
+		scheduler.waitGroup.Done()
+	}
 }
 
 func (scheduler *Scheduler) eventLoop() {
 	for {
 		switch <-scheduler.events {
 		case PreparedEvent:
-			fmt.Println("Received PreparedEvent")
 			scheduler.setStatus(ActiveStatus)
 		case ScheduledEvent:
-			fmt.Println("Received ScheduledEvent")
 			switch scheduler.status {
 			case InactiveStatus:
 				scheduler.setStatus(ActiveStatus)
@@ -117,7 +124,6 @@ func (scheduler *Scheduler) eventLoop() {
 				scheduler.execute()
 			}
 		case FinishedEvent:
-			fmt.Println("Received FinishedEvent")
 			scheduler.parallelRunning -= 1
 			if scheduler.status == ActiveStatus || scheduler.status == InactiveStatus {
 				if scheduler.isRunning() || scheduler.isScheduled() {
@@ -127,21 +133,18 @@ func (scheduler *Scheduler) eventLoop() {
 				}
 			}
 		case WakedEvent:
-			fmt.Println("Received WakedEvent")
 			if scheduler.isScheduled() {
 				scheduler.setStatus(ActiveStatus)
 			} else {
 				scheduler.setStatus(ClosingStatus)
 			}
 		case ClosingEvent:
-			fmt.Println("Received ClosingEvent")
 			if scheduler.isScheduled() {
 				scheduler.setStatus(ActiveStatus)
 			} else {
 				scheduler.setStatus(ClosedStatus)
 			}
 		case ErrorEvent:
-			fmt.Println("Received ErrorEvent")
 			scheduler.setStatus(ErrorStatus)
 		}
 	}
@@ -155,22 +158,16 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 	scheduler.status = status
 	switch scheduler.status {
 	case PendingStatus:
-		fmt.Println("status: Pending")
 		go scheduler.runPrepareCallback()
 	case ActiveStatus:
-		fmt.Println("status: Active")
 		scheduler.execute()
 	case InactiveStatus:
-		fmt.Println("status: Inactive")
 		go scheduler.runOnInactive()
 	case ClosingStatus:
-		fmt.Println("status: Closing")
 		go scheduler.runOnClosingCallback()
 	case ClosedStatus:
-		fmt.Println("status: Closed")
 		go scheduler.runOnCloseCallback()
 	case ErrorStatus:
-		fmt.Println("status: Error")
 		go scheduler.runOnErrorCallback()
 	}
 }
@@ -183,13 +180,11 @@ func (scheduler *Scheduler) execute() {
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
 		scheduler.parallelRunning += 1
 		go execution.call(scheduler)
-		return
 	}
 
 	for execution := scheduler.serialQueue.Pop(); execution != nil; execution = scheduler.serialQueue.Pop() {
 		scheduler.parallelRunning += 1
 		go execution.call(scheduler)
-		return
 	}
 }
 
@@ -239,7 +234,9 @@ func (scheduler *Scheduler) runOnClosingCallback() {
 
 // TODO: add close callback, run it and then use it here
 func (scheduler *Scheduler) runOnCloseCallback() {
-	scheduler.waitGroup.Done()
+	if scheduler.waitGroup != nil {
+		scheduler.waitGroup.Done()
+	}
 }
 
 func (scheduler *Scheduler) runOnErrorCallback() {

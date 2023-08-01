@@ -1,41 +1,147 @@
 package execution_scheduler
 
 import (
-	"sync"
 	"time"
 
-	"github.com/jonboulle/clockwork"
+	"testing"
 )
 
-type mockedScheduler struct {
-	lock              sync.Mutex
-	events            []ExecutionEvent
-	removedExecutions []*Execution
-	clock             clockwork.Clock
+func TestSchedulerEmptyTimeline(t *testing.T) {
+	scheduler := NewScheduler(nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{at: 0, status: ActiveStatus, executions: []testExecutionStatus{}},
+		},
+		map[int]time.Duration{},
+		map[int]time.Duration{},
+	)
 }
 
-func newMockedScheduler() *mockedScheduler {
-	return &mockedScheduler{
-		clock: clockwork.NewFakeClock(),
-	}
+func TestSchedulerMinimalParallelTimeline(t *testing.T) {
+	scheduler := NewScheduler(nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 0, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{at: 0, status: ActiveStatus, executions: []testExecutionStatus{_esR}},
+			{at: 1, status: ClosedStatus, executions: []testExecutionStatus{_esF}},
+		},
+		map[int]time.Duration{0: 0 * time.Second},
+		map[int]time.Duration{},
+	)
 }
 
-func (scheduler *mockedScheduler) getLock() *sync.Mutex {
-	return &scheduler.lock
+func TestSchedulerMinimalSerialTimeline(t *testing.T) {
+	scheduler := NewScheduler(nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 0, kind: Serial, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{at: 0, status: ActiveStatus, executions: []testExecutionStatus{_esR}},
+			{at: 1, status: ClosedStatus, executions: []testExecutionStatus{_esF}},
+		},
+		map[int]time.Duration{0: 0 * time.Second},
+		map[int]time.Duration{},
+	)
 }
 
-func (scheduler *mockedScheduler) getClock() clockwork.Clock {
-	return scheduler.clock
-}
+func TestSchedulerTimeline1(t *testing.T) {
+	scheduler := NewScheduler(nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 0, kind: Parallel, priority: 0, handler: testDelayedHandler(5, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 0, kind: Parallel, priority: 0, handler: testDelayedHandler(5, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 0, kind: Parallel, priority: 0, handler: testDelayedHandler(5, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(5, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(5, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(5, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	)
 
-func (scheduler *mockedScheduler) signal(event ExecutionEvent) {
-	scheduler.events = append(scheduler.events, event)
-}
-
-func (scheduler *mockedScheduler) remove(execution *Execution) {
-	scheduler.removedExecutions = append(scheduler.removedExecutions, execution)
-}
-
-func (scheduler *mockedScheduler) advance(duration time.Duration) {
-	scheduler.clock.(clockwork.FakeClock).Advance(duration)
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esR, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esR, _esR, _esR, _esR, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esP, _esP, _esP, _esP, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esP, _esP, _esP},
+			},
+			{
+				at:         4,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR, _esR},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR, _esR, _esR, _esF, _esF, _esF, _esR, _esR, _esR, _esF, _esF, _esF},
+			},
+			{
+				at:         6,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0:  0 * time.Second,
+			1:  0 * time.Second,
+			2:  0 * time.Second,
+			3:  1 * time.Second,
+			4:  1 * time.Second,
+			5:  1 * time.Second,
+			6:  2 * time.Second,
+			7:  2 * time.Second,
+			8:  2 * time.Second,
+			9:  3 * time.Second,
+			10: 3 * time.Second,
+			11: 3 * time.Second,
+			12: 4 * time.Second,
+			13: 4 * time.Second,
+			14: 4 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
 }

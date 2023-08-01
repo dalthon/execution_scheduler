@@ -16,7 +16,7 @@ help: ## Get help
 	@echo ""
 .PHONY: help
 
-build:
+build :## Builds docker image
 	docker build -t $(IMAGE_NAME) .
 .PHONY: build
 
