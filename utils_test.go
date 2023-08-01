@@ -247,31 +247,31 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 			switch execution {
 			case _esP:
 				if executions[i] != nil {
-					timelines.t.Fatalf("At %s expected execution %d to be pending, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].status))
+					timelines.t.Fatalf("At %s expected execution %d to be pending, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].Status))
 				}
 			case _esS:
 				if executions[i] == nil {
 					timelines.t.Fatalf("At %s expected execution %d to be scheduled, but is pending", clock.Since(startedAt), i)
-				} else if executions[i].status != ExecutionScheduled {
-					timelines.t.Fatalf("At %s expected execution %d to be scheduled, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].status))
+				} else if executions[i].Status != ExecutionScheduled {
+					timelines.t.Fatalf("At %s expected execution %d to be scheduled, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].Status))
 				}
 			case _esR:
 				if executions[i] == nil {
 					timelines.t.Fatalf("At %s expected execution %d to be running, but is pending", clock.Since(startedAt), i)
-				} else if executions[i].status != ExecutionRunning {
-					timelines.t.Fatalf("At %s expected execution %d to be running, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].status))
+				} else if executions[i].Status != ExecutionRunning {
+					timelines.t.Fatalf("At %s expected execution %d to be running, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].Status))
 				}
 			case _esX:
 				if executions[i] == nil {
 					timelines.t.Fatalf("At %s expected execution %d to be expired, but is pending", clock.Since(startedAt), i)
-				} else if executions[i].status != ExecutionExpired {
-					timelines.t.Fatalf("At %s expected execution %d to be expired, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].status))
+				} else if executions[i].Status != ExecutionExpired {
+					timelines.t.Fatalf("At %s expected execution %d to be expired, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].Status))
 				}
 			case _esF:
 				if executions[i] == nil {
 					timelines.t.Fatalf("At %s expected execution %d to be finished, but is pending", clock.Since(startedAt), i)
-				} else if executions[i].status != ExecutionFinished {
-					timelines.t.Fatalf("At %s expected execution %d to be finished, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].status))
+				} else if executions[i].Status != ExecutionFinished {
+					timelines.t.Fatalf("At %s expected execution %d to be finished, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].Status))
 				}
 			}
 		}

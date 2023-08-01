@@ -14,8 +14,8 @@ func TestExecutionCalling(t *testing.T) {
 	execution := NewExecution(handler.handler, handler.errorHandler, Parallel, 0)
 	goroutineCount := runtime.NumGoroutine()
 
-	if execution.status != ExecutionScheduled {
-		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionScheduled {
+		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.Status))
 	}
 
 	if !execution.call(scheduler) {
@@ -38,13 +38,13 @@ func TestExecutionCalling(t *testing.T) {
 		t.Fatalf("execution calling should have spawn only one new goroutine, but got %d", runtime.NumGoroutine()-goroutineCount)
 	}
 
-	if execution.status != ExecutionRunning {
-		t.Fatalf("execution status after calling should be Running, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionRunning {
+		t.Fatalf("execution status after calling should be Running, but got %q", executionStatusToString(execution.Status))
 	}
 
 	handler.wait()
-	if execution.status != ExecutionFinished {
-		t.Fatalf("execution status after calling should be Finished, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionFinished {
+		t.Fatalf("execution status after calling should be Finished, but got %q", executionStatusToString(execution.Status))
 	}
 
 	if runtime.NumGoroutine() != goroutineCount {
@@ -67,8 +67,8 @@ func TestExecutionCalling(t *testing.T) {
 		t.Fatalf("no new goroutines should be spawned, but %d we have", runtime.NumGoroutine()-goroutineCount)
 	}
 
-	if execution.status != ExecutionFinished {
-		t.Fatalf("execution status after calling should be Finished, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionFinished {
+		t.Fatalf("execution status after calling should be Finished, but got %q", executionStatusToString(execution.Status))
 	}
 }
 
@@ -78,13 +78,13 @@ func TestExecutionExpiration(t *testing.T) {
 	execution := NewExecution(handler.handler, handler.errorHandler, Parallel, 0)
 	goroutineCount := runtime.NumGoroutine()
 
-	if execution.status != ExecutionScheduled {
-		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionScheduled {
+		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.Status))
 	}
 
 	execution.setExpiration(scheduler, 3*time.Second)
-	if execution.status != ExecutionScheduled {
-		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionScheduled {
+		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.Status))
 	}
 
 	if runtime.NumGoroutine() != goroutineCount {
@@ -97,8 +97,8 @@ func TestExecutionExpiration(t *testing.T) {
 	}
 
 	handler.wait()
-	if execution.status != ExecutionExpired {
-		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionExpired {
+		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.Status))
 	}
 
 	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{ErrorEvent}) {
@@ -113,8 +113,8 @@ func TestExecutionExpiration(t *testing.T) {
 		t.Fatalf("no new goroutines should be spawned, but %d we have", runtime.NumGoroutine()-goroutineCount)
 	}
 
-	if execution.status != ExecutionExpired {
-		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionExpired {
+		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.Status))
 	}
 
 	if execution.expire(scheduler) {
@@ -125,7 +125,7 @@ func TestExecutionExpiration(t *testing.T) {
 		t.Fatalf("no new goroutines should be spawned, but %d we have", runtime.NumGoroutine()-goroutineCount)
 	}
 
-	if execution.status != ExecutionExpired {
-		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.status))
+	if execution.Status != ExecutionExpired {
+		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.Status))
 	}
 }

@@ -17,7 +17,7 @@ const (
 )
 
 type Execution struct {
-	status       ExecutionStatus
+	Status       ExecutionStatus
 	handler      func() error
 	errorHandler func(error) error
 	priority     int
@@ -28,7 +28,7 @@ type Execution struct {
 
 func NewExecution(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
 	return &Execution{
-		status:       ExecutionScheduled,
+		Status:       ExecutionScheduled,
 		handler:      handler,
 		errorHandler: errorHandler,
 		priority:     priority,
@@ -42,8 +42,8 @@ func (execution *Execution) call(scheduler schedulerInterface) bool {
 	scheduler.getLock().Lock()
 	defer scheduler.getLock().Unlock()
 
-	if execution.status == ExecutionScheduled {
-		execution.status = ExecutionRunning
+	if execution.Status == ExecutionScheduled {
+		execution.Status = ExecutionRunning
 		if execution.timer != nil {
 			execution.timer.Stop()
 			execution.timer = nil
@@ -70,7 +70,7 @@ func (execution *Execution) run(scheduler schedulerInterface) {
 	}
 
 	scheduler.getLock().Lock()
-	execution.status = ExecutionFinished
+	execution.Status = ExecutionFinished
 	scheduler.getLock().Unlock()
 }
 
@@ -85,8 +85,8 @@ func (execution *Execution) expire(scheduler schedulerInterface) bool {
 	scheduler.getLock().Lock()
 	defer scheduler.getLock().Unlock()
 
-	if execution.status == ExecutionScheduled {
-		execution.status = ExecutionExpired
+	if execution.Status == ExecutionScheduled {
+		execution.Status = ExecutionExpired
 		execution.timer = nil
 		scheduler.remove(execution)
 
