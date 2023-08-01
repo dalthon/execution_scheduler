@@ -239,8 +239,8 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 	waitForAllGoroutines()
 
 	checkExpectation := func(expectation testTimelineExpectations) {
-		if timelines.scheduler.status != expectation.status {
-			timelines.t.Fatalf("At %s expected scheduler status %q, but got %q", clock.Since(startedAt), schedulerStatusToString(expectation.status), schedulerStatusToString(timelines.scheduler.status))
+		if timelines.scheduler.Status != expectation.status {
+			timelines.t.Fatalf("At %s expected scheduler status %q, but got %q", clock.Since(startedAt), schedulerStatusToString(expectation.status), schedulerStatusToString(timelines.scheduler.Status))
 		}
 
 		for i, execution := range expectation.executions {

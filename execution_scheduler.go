@@ -50,28 +50,28 @@ type SchedulerOptions struct {
 }
 
 type Scheduler struct {
-	waitGroup       *sync.WaitGroup
+	Status          SchedulerStatus
+	options         *SchedulerOptions
 	lock            sync.Mutex
 	parallelRunning uint32
-	status          SchedulerStatus
 	parallelQueue   *ExecutionQueue
 	serialQueue     *ExecutionQueue
 	events          chan ExecutionEvent
 	clock           clockwork.Clock
-	options         *SchedulerOptions
+	waitGroup       *sync.WaitGroup
 	inactivityTimer clockwork.Timer
 }
 
 func NewScheduler(options *SchedulerOptions, waitGroup *sync.WaitGroup) *Scheduler {
 	scheduler := &Scheduler{
+		Status:          PendingStatus,
+		options:         options,
 		parallelRunning: 0,
-		waitGroup:       waitGroup,
-		status:          PendingStatus,
 		parallelQueue:   NewExecutionQueue(),
 		serialQueue:     NewExecutionQueue(),
 		events:          make(chan ExecutionEvent, 16),
 		clock:           clockwork.NewRealClock(),
-		options:         options,
+		waitGroup:       waitGroup,
 		inactivityTimer: nil,
 	}
 	if waitGroup != nil {
@@ -128,7 +128,7 @@ func (scheduler *Scheduler) eventLoop() {
 		case PreparedEvent:
 			scheduler.setStatus(ActiveStatus)
 		case ScheduledEvent:
-			switch scheduler.status {
+			switch scheduler.Status {
 			case InactiveStatus:
 				scheduler.setStatus(ActiveStatus)
 			case ActiveStatus:
@@ -136,7 +136,7 @@ func (scheduler *Scheduler) eventLoop() {
 			}
 		case FinishedEvent:
 			scheduler.parallelRunning -= 1
-			if scheduler.status == ActiveStatus || scheduler.status == InactiveStatus {
+			if scheduler.Status == ActiveStatus || scheduler.Status == InactiveStatus {
 				if scheduler.isRunning() || scheduler.isScheduled() {
 					scheduler.execute()
 				} else {
@@ -163,11 +163,11 @@ func (scheduler *Scheduler) eventLoop() {
 }
 
 func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
-	if scheduler.status == status {
+	if scheduler.Status == status {
 		return
 	}
 
-	switch scheduler.status {
+	switch scheduler.Status {
 	case InactiveStatus:
 		if scheduler.inactivityTimer != nil {
 			scheduler.inactivityTimer.Stop()
@@ -175,8 +175,8 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 		}
 	}
 
-	scheduler.status = status
-	switch scheduler.status {
+	scheduler.Status = status
+	switch scheduler.Status {
 	case PendingStatus:
 		scheduler.runPrepareCallback()
 	case ActiveStatus:
