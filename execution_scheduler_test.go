@@ -7,7 +7,7 @@ import (
 )
 
 func TestSchedulerEmptyTimeline(t *testing.T) {
-	scheduler := NewScheduler(nil)
+	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
@@ -23,8 +23,66 @@ func TestSchedulerEmptyTimeline(t *testing.T) {
 	)
 }
 
+func TestSchedulerInactivityDelayTimeline(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+
+	newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	).expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         4,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         5,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         6,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 3 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+}
+
 func TestSchedulerMinimalParallelTimeline(t *testing.T) {
-	scheduler := NewScheduler(nil)
+	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
@@ -44,7 +102,7 @@ func TestSchedulerMinimalParallelTimeline(t *testing.T) {
 }
 
 func TestSchedulerMinimalSerialTimeline(t *testing.T) {
-	scheduler := NewScheduler(nil)
+	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
@@ -64,7 +122,7 @@ func TestSchedulerMinimalSerialTimeline(t *testing.T) {
 }
 
 func TestSchedulerTimeline1(t *testing.T) {
-	scheduler := NewScheduler(nil)
+	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,

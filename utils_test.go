@@ -12,6 +12,12 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
+func defaultSchedulerOptions() *SchedulerOptions {
+	return &SchedulerOptions{
+		inactivityDelay: time.Duration(0),
+	}
+}
+
 func schedulerStatusToString(status SchedulerStatus) string {
 	switch status {
 	case PendingStatus:

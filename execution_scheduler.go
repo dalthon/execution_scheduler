@@ -2,6 +2,7 @@ package execution_scheduler
 
 import (
 	"sync"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 )
@@ -44,6 +45,10 @@ type schedulerInterface interface {
 	Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution
 }
 
+type SchedulerOptions struct {
+	inactivityDelay time.Duration
+}
+
 type Scheduler struct {
 	waitGroup       *sync.WaitGroup
 	lock            sync.Mutex
@@ -53,9 +58,11 @@ type Scheduler struct {
 	serialQueue     *ExecutionQueue
 	events          chan ExecutionEvent
 	clock           clockwork.Clock
+	options         *SchedulerOptions
+	inactivityTimer clockwork.Timer
 }
 
-func NewScheduler(waitGroup *sync.WaitGroup) *Scheduler {
+func NewScheduler(options *SchedulerOptions, waitGroup *sync.WaitGroup) *Scheduler {
 	scheduler := &Scheduler{
 		parallelRunning: 0,
 		waitGroup:       waitGroup,
@@ -64,6 +71,8 @@ func NewScheduler(waitGroup *sync.WaitGroup) *Scheduler {
 		serialQueue:     NewExecutionQueue(),
 		events:          make(chan ExecutionEvent, 16),
 		clock:           clockwork.NewRealClock(),
+		options:         options,
+		inactivityTimer: nil,
 	}
 	if waitGroup != nil {
 		waitGroup.Add(1)
@@ -155,6 +164,16 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 		return
 	}
 
+	switch scheduler.status {
+	case InactiveStatus:
+		scheduler.lock.Lock()
+		if scheduler.inactivityTimer != nil {
+			scheduler.inactivityTimer.Stop()
+			scheduler.inactivityTimer = nil
+		}
+		scheduler.lock.Unlock()
+	}
+
 	scheduler.status = status
 	switch scheduler.status {
 	case PendingStatus:
@@ -162,7 +181,7 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 	case ActiveStatus:
 		scheduler.execute()
 	case InactiveStatus:
-		go scheduler.runOnInactive()
+		scheduler.runOnInactive()
 	case ClosingStatus:
 		go scheduler.runOnClosingCallback()
 	case ClosedStatus:
@@ -222,8 +241,29 @@ func (scheduler *Scheduler) runPrepareCallback() {
 	scheduler.signal(PreparedEvent)
 }
 
-// TODO: add inactive callback, run it and then use it here
 func (scheduler *Scheduler) runOnInactive() {
+	if scheduler.options.inactivityDelay == time.Duration(0) {
+		scheduler.signal(WakedEvent)
+		return
+	}
+
+	scheduler.lock.Lock()
+	scheduler.inactivityTimer = scheduler.clock.AfterFunc(
+		scheduler.options.inactivityDelay,
+		scheduler.wakeFromInactivity,
+	)
+	scheduler.lock.Unlock()
+}
+
+func (scheduler *Scheduler) wakeFromInactivity() {
+	scheduler.lock.Lock()
+	defer scheduler.lock.Unlock()
+
+	if scheduler.inactivityTimer != nil {
+		scheduler.inactivityTimer.Stop()
+		scheduler.inactivityTimer = nil
+	}
+
 	scheduler.signal(WakedEvent)
 }
 
@@ -240,5 +280,4 @@ func (scheduler *Scheduler) runOnCloseCallback() {
 }
 
 func (scheduler *Scheduler) runOnErrorCallback() {
-
 }
