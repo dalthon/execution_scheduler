@@ -15,6 +15,7 @@ import (
 func defaultSchedulerOptions() *SchedulerOptions {
 	return &SchedulerOptions{
 		inactivityDelay: time.Duration(0),
+		onPrepare:       nil,
 	}
 }
 
@@ -184,6 +185,8 @@ type testTimelineExpectations struct {
 }
 
 func newTestTimelinesExample(t *testing.T, scheduler *Scheduler, params []testTimelineParams) *testTimelinesExample {
+	scheduler.clock = clockwork.NewFakeClock()
+
 	return &testTimelinesExample{
 		t:         t,
 		scheduler: scheduler,
@@ -194,9 +197,8 @@ func newTestTimelinesExample(t *testing.T, scheduler *Scheduler, params []testTi
 func (timelines *testTimelinesExample) expects(expectations []testTimelineExpectations, expCalledAt map[int]time.Duration, expErroredAt map[int]time.Duration) {
 	var lock sync.Mutex
 
-	clock := clockwork.NewFakeClock()
+	clock := timelines.scheduler.clock.(clockwork.FakeClock)
 	startedAt := clock.Now()
-	timelines.scheduler.clock = clock
 
 	calledAt := make(map[int]time.Duration)
 	erroredAt := make(map[int]time.Duration)

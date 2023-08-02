@@ -47,6 +47,7 @@ type schedulerInterface interface {
 
 type SchedulerOptions struct {
 	inactivityDelay time.Duration
+	onPrepare       func(scheduler *Scheduler) error
 }
 
 type Scheduler struct {
@@ -234,9 +235,17 @@ func (scheduler *Scheduler) isScheduled() bool {
 	return scheduler.serialQueue.Size() > 0 || scheduler.parallelQueue.Size() > 0
 }
 
-// TODO: add prepare callback, run it and then use it here
+// TODO: If onPrepare hook fails, what should we do?
 func (scheduler *Scheduler) runPrepareCallback() {
-	scheduler.signal(PreparedEvent)
+	if scheduler.options.onPrepare == nil {
+		scheduler.signal(PreparedEvent)
+		return
+	}
+
+	go func() {
+		scheduler.options.onPrepare(scheduler)
+		scheduler.signal(PreparedEvent)
+	}()
 }
 
 func (scheduler *Scheduler) runOnInactive() {

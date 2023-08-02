@@ -23,6 +23,61 @@ func TestSchedulerEmptyTimeline(t *testing.T) {
 	)
 }
 
+// TODO: Handle error going back to Pending
+func TestSchedulerOnPrepareTimeline(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+	var preparedAt time.Duration
+	options.onPrepare = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(2 * time.Second)
+		preparedAt = scheduler.clock.Since(startedAt)
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esS},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         3,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	if preparedAt != 2*time.Second {
+		t.Fatalf("OnPrepare should have finished at 2s, but was finished at %v", preparedAt)
+	}
+}
+
 func TestSchedulerInactivityDelayTimeline(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
