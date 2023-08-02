@@ -81,6 +81,7 @@ func (execution *Execution) setExpiration(scheduler schedulerInterface, duration
 	)
 }
 
+// TODO: Create proper Timeout Error
 func (execution *Execution) expire(scheduler schedulerInterface) bool {
 	scheduler.getLock().Lock()
 	defer scheduler.getLock().Unlock()

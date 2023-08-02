@@ -124,6 +124,115 @@ func TestSchedulerCrashedOnPrepareTimeline(t *testing.T) {
 	}
 }
 
+// TODO: Handle error going back to Pending
+func TestSchedulerOnClosingTimeline(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+	var closedAt time.Duration
+	options.onClosing = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		closedAt = scheduler.clock.Since(startedAt)
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         2,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         3,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	if closedAt != 3*time.Second {
+		t.Fatalf("OnClosing should have finished at 3s, but was finished at %v", closedAt)
+	}
+}
+
+func TestSchedulerCrashedOnClosingTimeline(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+	var closedAt time.Duration
+	options.onClosing = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		closedAt = scheduler.clock.Since(startedAt)
+
+		return errors.New("Crashed on onClosing")
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         2,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         3,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	if closedAt != 3*time.Second {
+		t.Fatalf("OnClosing should have finished at 3s, but was finished at %v", closedAt)
+	}
+}
+
 func TestSchedulerInactivityDelayTimeline(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second

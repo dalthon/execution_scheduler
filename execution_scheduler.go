@@ -50,6 +50,7 @@ type schedulerInterface interface {
 type SchedulerOptions struct {
 	inactivityDelay time.Duration
 	onPrepare       func(scheduler *Scheduler) error
+	onClosing       func(scheduler *Scheduler) error
 }
 
 type Scheduler struct {
@@ -243,24 +244,6 @@ func (scheduler *Scheduler) isScheduled() bool {
 	return scheduler.serialQueue.Size() > 0 || scheduler.parallelQueue.Size() > 0
 }
 
-// TODO: If onPrepare hook fails, what should we do?
-func (scheduler *Scheduler) runPrepareCallback() {
-	if scheduler.options.onPrepare == nil {
-		scheduler.signal(PreparedEvent)
-		return
-	}
-
-	go func() {
-		err := scheduler.options.onPrepare(scheduler)
-		if err == nil {
-			scheduler.signal(PreparedEvent)
-			return
-		}
-
-		scheduler.signal(CrashedEvent)
-	}()
-}
-
 func (scheduler *Scheduler) runOnInactive() {
 	if scheduler.options.inactivityDelay == time.Duration(0) {
 		scheduler.signal(WakedEvent)
@@ -285,11 +268,6 @@ func (scheduler *Scheduler) wakeFromInactivity() {
 	scheduler.signal(WakedEvent)
 }
 
-// TODO: add closing callback, run it and then use it here
-func (scheduler *Scheduler) runOnClosingCallback() {
-	scheduler.signal(ClosingEvent)
-}
-
 // TODO: add close callback, run it and then use it here
 func (scheduler *Scheduler) runOnCloseCallback() {
 	if scheduler.waitGroup != nil {
@@ -311,4 +289,34 @@ func (scheduler *Scheduler) runOnCrashedCallback() {
 	if scheduler.waitGroup != nil {
 		scheduler.waitGroup.Done()
 	}
+}
+
+// TODO: If onPrepare hook fails, what should we do?
+func (scheduler *Scheduler) runPrepareCallback() {
+	scheduler.runCallbackAndFireEvent(scheduler.options.onPrepare, PreparedEvent)
+}
+
+// TODO: If onClosing hook fails, what should we do?
+func (scheduler *Scheduler) runOnClosingCallback() {
+	scheduler.runCallbackAndFireEvent(scheduler.options.onClosing, ClosingEvent)
+}
+
+func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent) {
+	if callback == nil {
+		scheduler.signal(event)
+		return
+	}
+
+	go scheduler.runAsyncCallbackAndFireEvent(callback, event)
+}
+
+// TODO: If onPrepare or onClosing hook fails, what should we do?
+func (scheduler *Scheduler) runAsyncCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent) {
+	err := callback(scheduler)
+	if err == nil {
+		scheduler.signal(event)
+		return
+	}
+
+	scheduler.signal(CrashedEvent)
 }
