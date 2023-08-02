@@ -33,6 +33,8 @@ func schedulerStatusToString(status SchedulerStatus) string {
 		return "Closed"
 	case ErrorStatus:
 		return "Error"
+	case CrashedStatus:
+		return "Crashed"
 	default:
 		return "Unknown"
 	}

@@ -1,6 +1,7 @@
 package execution_scheduler
 
 import (
+	"errors"
 	"time"
 
 	"testing"
@@ -70,6 +71,51 @@ func TestSchedulerOnPrepareTimeline(t *testing.T) {
 		map[int]time.Duration{
 			0: 2 * time.Second,
 		},
+		map[int]time.Duration{},
+	)
+
+	if preparedAt != 2*time.Second {
+		t.Fatalf("OnPrepare should have finished at 2s, but was finished at %v", preparedAt)
+	}
+}
+
+func TestSchedulerCrashedOnPrepareTimeline(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{},
+	)
+
+	startedAt := scheduler.clock.Now()
+	var preparedAt time.Duration
+	options.onPrepare = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(2 * time.Second)
+		preparedAt = scheduler.clock.Since(startedAt)
+
+		return errors.New("Crashed on onPrepare")
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{},
+			},
+			{
+				at:         1,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{},
+			},
+			{
+				at:         2,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{},
+			},
+		},
+		map[int]time.Duration{},
 		map[int]time.Duration{},
 	)
 

@@ -24,6 +24,7 @@ const (
 	ClosingStatus
 	ClosedStatus
 	ErrorStatus
+	CrashedStatus
 )
 
 type ExecutionEvent uint64
@@ -35,6 +36,7 @@ const (
 	WakedEvent
 	ClosingEvent
 	ErrorEvent
+	CrashedEvent
 )
 
 type schedulerInterface interface {
@@ -158,6 +160,8 @@ func (scheduler *Scheduler) eventLoop() {
 			}
 		case ErrorEvent:
 			scheduler.setStatus(ErrorStatus)
+		case CrashedEvent:
+			scheduler.setStatus(CrashedStatus)
 		}
 		scheduler.lock.Unlock()
 	}
@@ -174,6 +178,8 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 			scheduler.inactivityTimer.Stop()
 			scheduler.inactivityTimer = nil
 		}
+	case ErrorStatus:
+		scheduler.runOnLeaveErrorCallback()
 	}
 
 	scheduler.Status = status
@@ -190,6 +196,8 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 		scheduler.runOnCloseCallback()
 	case ErrorStatus:
 		scheduler.runOnErrorCallback()
+	case CrashedStatus:
+		scheduler.runOnCrashedCallback()
 	}
 }
 
@@ -243,8 +251,13 @@ func (scheduler *Scheduler) runPrepareCallback() {
 	}
 
 	go func() {
-		scheduler.options.onPrepare(scheduler)
-		scheduler.signal(PreparedEvent)
+		err := scheduler.options.onPrepare(scheduler)
+		if err == nil {
+			scheduler.signal(PreparedEvent)
+			return
+		}
+
+		scheduler.signal(CrashedEvent)
 	}()
 }
 
@@ -284,5 +297,18 @@ func (scheduler *Scheduler) runOnCloseCallback() {
 	}
 }
 
+// TODO: add error callback, run it and then use it here
 func (scheduler *Scheduler) runOnErrorCallback() {
+}
+
+// TODO: add leave error callback, run it and then use it here
+func (scheduler *Scheduler) runOnLeaveErrorCallback() {
+}
+
+// TODO: add crashed callback (or use close?), run it and then use it here
+// TODO: once it is crashed, we shlould error all executions
+func (scheduler *Scheduler) runOnCrashedCallback() {
+	if scheduler.waitGroup != nil {
+		scheduler.waitGroup.Done()
+	}
 }
