@@ -1,6 +1,7 @@
 package execution_scheduler
 
 import (
+	"errors"
 	"reflect"
 	"runtime"
 	"time"
@@ -30,7 +31,7 @@ func TestExecutionCalling(t *testing.T) {
 		t.Fatalf("execution.call should not run handler more than once")
 	}
 
-	if execution.expire(scheduler) {
+	if execution.expire(scheduler, errors.New("Timeout error")) {
 		t.Fatalf("execution can't be expired after it was called")
 	}
 
@@ -59,7 +60,7 @@ func TestExecutionCalling(t *testing.T) {
 		t.Fatalf("execution.call should not run handler more than once")
 	}
 
-	if execution.expire(scheduler) {
+	if execution.expire(scheduler, errors.New("Timeout error")) {
 		t.Fatalf("execution can't be expired after it was finished")
 	}
 
@@ -117,7 +118,7 @@ func TestExecutionExpiration(t *testing.T) {
 		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.Status))
 	}
 
-	if execution.expire(scheduler) {
+	if execution.expire(scheduler, errors.New("Timeout error")) {
 		t.Fatalf("can't be expired more than once")
 	}
 

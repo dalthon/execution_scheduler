@@ -17,6 +17,10 @@ func defaultSchedulerOptions() *SchedulerOptions {
 		inactivityDelay: time.Duration(0),
 		onPrepare:       nil,
 		onClosing:       nil,
+		onLeaveError:    nil,
+		onError:         nil,
+		onCrash:         nil,
+		onClose:         nil,
 	}
 }
 

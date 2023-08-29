@@ -1,7 +1,9 @@
 SH ?= ash
 
 IMAGE_NAME := execution-scheduler
-DOCKER_RUN := docker run --rm -v `pwd`:/app -it
+
+DOCKER_WORKDIR ?= `pwd`
+DOCKER_RUN := docker run --rm -v $(DOCKER_WORKDIR):/app -it
 DOCKER_BIN := $(shell which docker)
 
 define docker_run
