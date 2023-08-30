@@ -186,6 +186,9 @@ func (scheduler *Scheduler) eventLoop() {
 		case ErrorEvent:
 			scheduler.parallelRunning -= 1
 			scheduler.setStatus(ErrorStatus)
+			if !scheduler.onErrorRunning && !scheduler.isRunning() {
+				scheduler.runOnLeaveErrorCallback()
+			}
 		case OnErrorFinishedEvent:
 			scheduler.onErrorRunning = false
 			if !scheduler.isRunning() {
