@@ -189,6 +189,7 @@ type testTimelineExpectations struct {
 	at         int
 	status     SchedulerStatus
 	executions []testExecutionStatus
+	error      error
 }
 
 func newTestTimelinesExample(t *testing.T, scheduler *Scheduler, params []testTimelineParams) *testTimelinesExample {
@@ -248,6 +249,16 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 	waitForAllGoroutines()
 
 	checkExpectation := func(expectation testTimelineExpectations) {
+		if timelines.scheduler.Err != nil && expectation.error != nil {
+			if timelines.scheduler.Err.Error() != expectation.error.Error() {
+				timelines.t.Fatalf("At %s expected scheduler error should be \"%v\", but got \"%v\"", clock.Since(startedAt), expectation.error, timelines.scheduler.Err)
+			}
+		} else {
+			if timelines.scheduler.Err != nil || expectation.error != nil {
+				timelines.t.Fatalf("At %s expected scheduler error should be \"%v\", but got \"%v\"", clock.Since(startedAt), expectation.error, timelines.scheduler.Err)
+			}
+		}
+
 		if timelines.scheduler.Status != expectation.status {
 			timelines.t.Fatalf("At %s expected scheduler status %q, but got %q", clock.Since(startedAt), schedulerStatusToString(expectation.status), schedulerStatusToString(timelines.scheduler.Status))
 		}

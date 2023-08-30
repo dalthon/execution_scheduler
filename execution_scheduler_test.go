@@ -2,6 +2,7 @@ package execution_scheduler
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -28,13 +29,18 @@ func TestSchedulerEmptyTimeline(t *testing.T) {
 func TestSchedulerAllPendingTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil)
-	blownUpHandler := testDelayedHandler(1, errors.New("Boom!"))
+	blownHandlerCount := 0
+	blownUpHandler := func() testDelayedHandlerParams {
+		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler, errorHandler: blownUpHandler},
-			{delay: 6, kind: Parallel, priority: 0, handler: blownUpHandler, errorHandler: blownUpHandler},
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 6, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -130,11 +136,13 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 				at:         12,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Its enough!"),
 			},
 			{
 				at:         13,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Its enough!"),
 			},
 		},
 		map[int]time.Duration{
@@ -148,6 +156,140 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 	)
 
 	expectedPreparedAt := []time.Duration{2 * time.Second, 7 * time.Second, 12 * time.Second}
+	if !reflect.DeepEqual(preparedAt, expectedPreparedAt) {
+		t.Fatalf("OnPrepare should have finished at %v, but was finished at %v", expectedPreparedAt, preparedAt)
+	}
+
+	expectedLeftErrorAt := []time.Duration{5 * time.Second, 10 * time.Second}
+	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
+		t.Fatalf("OnLeftError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Its enough!" {
+		t.Fatalf("Scheduler should have finished with error message \"Its enough!\", but got %v", scheduler.Err)
+	}
+}
+
+func TestSchedulerAllErrorTransitions(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	blownHandlerCount := 0
+	blownUpHandler := func() testDelayedHandlerParams {
+		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 6, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	var preparedAt []time.Duration
+	options.onPrepare = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(2 * time.Second)
+		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	var leftErrorAt []time.Duration
+	options.onLeaveError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
+
+		if len(leftErrorAt) == 2 {
+			return errors.New("Its enough!")
+		}
+
+		return nil
+	}
+
+	options.onCrash = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esS, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         4,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         5,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         6,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         7,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         9,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         10,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Its enough!"),
+			},
+			{
+				at:         11,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Its enough!"),
+			},
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 7 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 3 * time.Second,
+			1: 8 * time.Second,
+		},
+	)
+
+	expectedPreparedAt := []time.Duration{2 * time.Second, 7 * time.Second}
 	if !reflect.DeepEqual(preparedAt, expectedPreparedAt) {
 		t.Fatalf("OnPrepare should have finished at %v, but was finished at %v", expectedPreparedAt, preparedAt)
 	}
