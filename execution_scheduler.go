@@ -1,7 +1,6 @@
 package execution_scheduler
 
 import (
-	"errors"
 	"sync"
 	"time"
 
@@ -246,7 +245,7 @@ func (scheduler *Scheduler) execute() {
 
 // TODO: handle serial execution
 func (scheduler *Scheduler) executeWithError() {
-	err := errors.New("Scheduler crashed")
+	err := NewSchedulerCrashedError()
 
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
 		scheduler.parallelRunning += 1
@@ -315,7 +314,7 @@ func (scheduler *Scheduler) wakeFromInactivity() {
 // TODO: add tests to onLeaveError callback
 func (scheduler *Scheduler) runOnLeaveErrorCallback() {
 	if scheduler.options.onLeaveError == nil {
-		scheduler.Err = errors.New("Execution raised error")
+		scheduler.Err = NewSchedulerNotRecovered()
 		scheduler.signal(CrashedEvent)
 		return
 	}

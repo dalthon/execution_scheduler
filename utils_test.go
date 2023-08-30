@@ -249,16 +249,6 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 	waitForAllGoroutines()
 
 	checkExpectation := func(expectation testTimelineExpectations) {
-		if timelines.scheduler.Err != nil && expectation.error != nil {
-			if timelines.scheduler.Err.Error() != expectation.error.Error() {
-				timelines.t.Fatalf("At %s expected scheduler error should be \"%v\", but got \"%v\"", clock.Since(startedAt), expectation.error, timelines.scheduler.Err)
-			}
-		} else {
-			if timelines.scheduler.Err != nil || expectation.error != nil {
-				timelines.t.Fatalf("At %s expected scheduler error should be \"%v\", but got \"%v\"", clock.Since(startedAt), expectation.error, timelines.scheduler.Err)
-			}
-		}
-
 		if timelines.scheduler.Status != expectation.status {
 			timelines.t.Fatalf("At %s expected scheduler status %q, but got %q", clock.Since(startedAt), schedulerStatusToString(expectation.status), schedulerStatusToString(timelines.scheduler.Status))
 		}
@@ -293,6 +283,16 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 				} else if executions[i].Status != ExecutionFinished {
 					timelines.t.Fatalf("At %s expected execution %d to be finished, but is %q", clock.Since(startedAt), i, executionStatusToString(executions[i].Status))
 				}
+			}
+		}
+
+		if timelines.scheduler.Err != nil && expectation.error != nil {
+			if timelines.scheduler.Err.Error() != expectation.error.Error() {
+				timelines.t.Fatalf("At %s expected scheduler error should be \"%v\", but got \"%v\"", clock.Since(startedAt), expectation.error, timelines.scheduler.Err)
+			}
+		} else {
+			if timelines.scheduler.Err != nil || expectation.error != nil {
+				timelines.t.Fatalf("At %s expected scheduler error should be \"%v\", but got \"%v\"", clock.Since(startedAt), expectation.error, timelines.scheduler.Err)
 			}
 		}
 	}

@@ -304,6 +304,129 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 	}
 }
 
+func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
+	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
+		},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         4,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         5,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      NewSchedulerNotRecovered(),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 2 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+		},
+	)
+}
+
+func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
+	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(1)},
+		},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         4,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         5,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      NewSchedulerNotRecovered(),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 2 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 4 * time.Second,
+		},
+	)
+}
+
 // // TODO: fix TestSchedulerCrashedOnPrepareTimeline
 // func TestSchedulerCrashedOnPrepareTimeline(t *testing.T) {
 //   options := defaultSchedulerOptions()
