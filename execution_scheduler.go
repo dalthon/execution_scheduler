@@ -56,7 +56,7 @@ type SchedulerOptions struct {
 	onClosing       func(scheduler *Scheduler) error
 	onLeaveError    func(scheduler *Scheduler) error
 	onError         func(scheduler *Scheduler) error
-	onCrash         func(scheduler *Scheduler) error
+	onCrash         func(scheduler *Scheduler)
 	onClose         func(scheduler *Scheduler)
 }
 
@@ -149,7 +149,7 @@ func (scheduler *Scheduler) eventLoop() {
 			case ActiveStatus:
 				scheduler.execute()
 			case CrashedStatus:
-				go scheduler.executeWithError()
+				go scheduler.cancelExecutions()
 			}
 		case FinishedEvent: // TODO: rethink about how to behave on FinishedEvent
 			scheduler.parallelRunning -= 1
@@ -242,7 +242,7 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 	case ErrorStatus:
 		scheduler.runOnErrorCallback()
 	case CrashedStatus:
-		scheduler.runOnCrashCallback()
+		scheduler.runOnCrash()
 	}
 }
 
@@ -260,7 +260,7 @@ func (scheduler *Scheduler) execute() {
 }
 
 // TODO: handle serial execution
-func (scheduler *Scheduler) executeWithError() {
+func (scheduler *Scheduler) cancelExecutions() {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
@@ -330,36 +330,6 @@ func (scheduler *Scheduler) wakeFromInactivity() {
 	scheduler.signal(WakedEvent)
 }
 
-// TODO: add tests to onLeaveError callback
-func (scheduler *Scheduler) runOnLeaveErrorCallback() {
-	if scheduler.Err != nil {
-		scheduler.signal(CrashedEvent)
-		return
-	}
-
-	if scheduler.options.onLeaveError == nil {
-		scheduler.Err = NewSchedulerNotRecovered()
-		scheduler.signal(CrashedEvent)
-		return
-	}
-
-	go scheduler.runAsyncCallbackAndFireEvent(scheduler.options.onLeaveError, RefreshEvent, false)
-}
-
-// TODO: add tests to onError callback
-func (scheduler *Scheduler) runOnErrorCallback() {
-	scheduler.callbackRunning = true
-	scheduler.runCallbackAndFireEvent(scheduler.options.onError, OnErrorFinishedEvent, false)
-}
-
-// TODO: add tests to onCrash callback
-// TODO: should close only after all executions are finished
-// TODO: should not go to closing, but to close
-func (scheduler *Scheduler) runOnCrashCallback() {
-	go scheduler.executeWithError()
-	scheduler.runCallbackAndFireEvent(scheduler.options.onCrash, OnCrashFinishedEvent, true)
-}
-
 func (scheduler *Scheduler) runOnClose() {
 	if scheduler.waitGroup != nil {
 		scheduler.waitGroup.Done()
@@ -375,16 +345,56 @@ func (scheduler *Scheduler) runOnPrepare() {
 	scheduler.runPrepareCallback()
 }
 
+// TODO: add tests to onCrash callback
+// TODO: should close only after all executions are finished
+// TODO: should not go to closing, but to close
+func (scheduler *Scheduler) runOnCrash() {
+	go scheduler.cancelExecutions()
+
+	if scheduler.options.onCrash == nil {
+		scheduler.signal(OnCrashFinishedEvent)
+		return
+	}
+
+	scheduler.callbackRunning = true
+	go func() {
+		scheduler.options.onCrash(scheduler)
+		scheduler.signal(OnCrashFinishedEvent)
+	}()
+}
+
+// TODO: add tests to onLeaveError callback
+func (scheduler *Scheduler) runOnLeaveErrorCallback() {
+	if scheduler.Err != nil {
+		scheduler.signal(CrashedEvent)
+		return
+	}
+
+	if scheduler.options.onLeaveError == nil {
+		scheduler.Err = NewSchedulerNotRecovered()
+		scheduler.signal(CrashedEvent)
+		return
+	}
+
+	go scheduler.runAsyncCallbackAndFireEvent(scheduler.options.onLeaveError, RefreshEvent)
+}
+
+// TODO: add tests to onError callback
+func (scheduler *Scheduler) runOnErrorCallback() {
+	scheduler.callbackRunning = true
+	scheduler.runCallbackAndFireEvent(scheduler.options.onError, OnErrorFinishedEvent)
+}
+
 func (scheduler *Scheduler) runPrepareCallback() {
-	scheduler.runCallbackAndFireEvent(scheduler.options.onPrepare, PreparedEvent, false)
+	scheduler.runCallbackAndFireEvent(scheduler.options.onPrepare, PreparedEvent)
 }
 
 func (scheduler *Scheduler) runOnClosingCallback() {
-	scheduler.runCallbackAndFireEvent(scheduler.options.onClosing, ClosingEvent, false)
+	scheduler.runCallbackAndFireEvent(scheduler.options.onClosing, ClosingEvent)
 }
 
-func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent, ignoreError bool) {
-	if !ignoreError && scheduler.Err != nil {
+func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent) {
+	if scheduler.Err != nil {
 		return
 	}
 
@@ -393,11 +403,11 @@ func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) er
 		return
 	}
 
-	go scheduler.runAsyncCallbackAndFireEvent(callback, event, ignoreError)
+	go scheduler.runAsyncCallbackAndFireEvent(callback, event)
 }
 
-func (scheduler *Scheduler) runAsyncCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent, ignoreError bool) {
-	if !ignoreError && scheduler.Err != nil {
+func (scheduler *Scheduler) runAsyncCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent) {
+	if scheduler.Err != nil {
 		return
 	}
 

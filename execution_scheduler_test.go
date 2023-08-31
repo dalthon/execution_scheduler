@@ -65,10 +65,8 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 		return nil
 	}
 
-	options.onCrash = func(scheduler *Scheduler) error {
+	options.onCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
-
-		return nil
 	}
 
 	timeline.expects(
@@ -210,10 +208,8 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 		return nil
 	}
 
-	options.onCrash = func(scheduler *Scheduler) error {
+	options.onCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
-
-		return nil
 	}
 
 	timeline.expects(
