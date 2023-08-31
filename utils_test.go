@@ -24,6 +24,35 @@ func defaultSchedulerOptions() *SchedulerOptions {
 	}
 }
 
+func schedulerEventToString(event ExecutionEvent) string {
+	switch event {
+	case PreparedEvent:
+		return "Prepared"
+	case ScheduledEvent:
+		return "Scheduled"
+	case FinishedEvent:
+		return "Finished"
+	case WakedEvent:
+		return "Waked"
+	case ClosingEvent:
+		return "Closing"
+	case ErrorEvent:
+		return "Error"
+	case OnErrorFinishedEvent:
+		return "OnErrorFinished"
+	case OnCrashFinishedEvent:
+		return "OnCrashFinished"
+	case RefreshEvent:
+		return "Refresh"
+	case CrashedEvent:
+		return "Crashed"
+	case NoOpEvent:
+		return "NoOp"
+	default:
+		return "Unknown"
+	}
+}
+
 func schedulerStatusToString(status SchedulerStatus) string {
 	switch status {
 	case PendingStatus:
@@ -309,11 +338,11 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 	}
 
 	if !reflect.DeepEqual(calledAt, expCalledAt) {
-		timelines.t.Fatalf("Expected executions to be called at %v, but got %v", calledAt, expCalledAt)
+		timelines.t.Fatalf("Expected executions to be called at %v, but got %v", expCalledAt, calledAt)
 	}
 
 	if !reflect.DeepEqual(erroredAt, expErroredAt) {
-		timelines.t.Fatalf("Expected executions to be errored at %v, but got %v", erroredAt, expErroredAt)
+		timelines.t.Fatalf("Expected executions to be errored at %v, but got %v", expErroredAt, erroredAt)
 	}
 }
 

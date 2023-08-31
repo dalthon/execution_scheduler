@@ -22,13 +22,17 @@ build :## Builds docker image
 	docker build -t $(IMAGE_NAME) .
 .PHONY: build
 
-shell: ## Runs sh in a given container
+shell: ## Runs shell inside container
 	@$(call docker_run,$(IMAGE_NAME),$(SH))
 .PHONY: shell
 
 test: ## Runs tests
 	@$(call docker_run,$(IMAGE_NAME),go test)
 .PHONY: test
+
+test-%: ## Runs specific test
+	@$(call docker_run,$(IMAGE_NAME),go test -run $*)
+.PHONY: test-%
 
 debug: ## Runs debug/main.go
 	@$(call docker_run,$(IMAGE_NAME),go run debug/main.go)

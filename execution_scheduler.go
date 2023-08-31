@@ -37,6 +37,7 @@ const (
 	ClosingEvent
 	ErrorEvent
 	OnErrorFinishedEvent
+	OnCrashFinishedEvent
 	RefreshEvent
 	CrashedEvent
 	NoOpEvent
@@ -69,7 +70,7 @@ type Scheduler struct {
 	parallelQueue   *ExecutionQueue
 	serialQueue     *ExecutionQueue
 	events          chan ExecutionEvent
-	onErrorRunning  bool
+	callbackRunning bool
 	clock           clockwork.Clock
 	waitGroup       *sync.WaitGroup
 	inactivityTimer clockwork.Timer
@@ -83,7 +84,7 @@ func NewScheduler(options *SchedulerOptions, waitGroup *sync.WaitGroup) *Schedul
 		parallelQueue:   NewExecutionQueue(),
 		serialQueue:     NewExecutionQueue(),
 		events:          make(chan ExecutionEvent, 16),
-		onErrorRunning:  false,
+		callbackRunning: false,
 		clock:           clockwork.NewRealClock(),
 		waitGroup:       waitGroup,
 		inactivityTimer: nil,
@@ -149,7 +150,7 @@ func (scheduler *Scheduler) eventLoop() {
 			case ActiveStatus:
 				scheduler.execute()
 			case CrashedStatus:
-				scheduler.executeWithError()
+				go scheduler.executeWithError()
 			}
 		case FinishedEvent: // TODO: rethink about how to behave on FinishedEvent
 			scheduler.parallelRunning -= 1
@@ -163,7 +164,7 @@ func (scheduler *Scheduler) eventLoop() {
 					}
 				}
 			case ErrorStatus:
-				if !scheduler.onErrorRunning && !scheduler.isRunning() {
+				if !scheduler.callbackRunning && !scheduler.isRunning() {
 					scheduler.runOnLeaveErrorCallback()
 				}
 			case CrashedStatus:
@@ -185,14 +186,27 @@ func (scheduler *Scheduler) eventLoop() {
 			}
 		case ErrorEvent:
 			scheduler.parallelRunning -= 1
-			scheduler.setStatus(ErrorStatus)
-			if !scheduler.onErrorRunning && !scheduler.isRunning() {
-				scheduler.runOnLeaveErrorCallback()
+			switch scheduler.Status {
+			case ErrorStatus:
+				if !scheduler.callbackRunning && !scheduler.isRunning() {
+					scheduler.runOnLeaveErrorCallback()
+				}
+			case CrashedStatus:
+				if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
+					scheduler.setStatus(ClosedStatus)
+				}
+			default:
+				scheduler.setStatus(ErrorStatus)
 			}
 		case OnErrorFinishedEvent:
-			scheduler.onErrorRunning = false
+			scheduler.callbackRunning = false
 			if !scheduler.isRunning() {
 				scheduler.runOnLeaveErrorCallback()
+			}
+		case OnCrashFinishedEvent:
+			scheduler.callbackRunning = false
+			if !scheduler.isRunning() && !scheduler.isScheduled() {
+				scheduler.setStatus(ClosedStatus)
 			}
 		case CrashedEvent:
 			scheduler.setStatus(CrashedStatus)
@@ -248,6 +262,9 @@ func (scheduler *Scheduler) execute() {
 
 // TODO: handle serial execution
 func (scheduler *Scheduler) executeWithError() {
+	scheduler.lock.Lock()
+	defer scheduler.lock.Unlock()
+
 	err := NewSchedulerCrashedError()
 
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
@@ -316,6 +333,11 @@ func (scheduler *Scheduler) wakeFromInactivity() {
 
 // TODO: add tests to onLeaveError callback
 func (scheduler *Scheduler) runOnLeaveErrorCallback() {
+	if scheduler.Err != nil {
+		scheduler.signal(CrashedEvent)
+		return
+	}
+
 	if scheduler.options.onLeaveError == nil {
 		scheduler.Err = NewSchedulerNotRecovered()
 		scheduler.signal(CrashedEvent)
@@ -327,15 +349,16 @@ func (scheduler *Scheduler) runOnLeaveErrorCallback() {
 
 // TODO: add tests to onError callback
 func (scheduler *Scheduler) runOnErrorCallback() {
-	scheduler.onErrorRunning = true
+	scheduler.callbackRunning = true
 	scheduler.runCallbackAndFireEvent(scheduler.options.onError, OnErrorFinishedEvent, false)
 }
 
 // TODO: add tests to onCrash callback
 // TODO: should close only after all executions are finished
+// TODO: should not go to closing, but to close
 func (scheduler *Scheduler) runOnCrashCallback() {
-	scheduler.executeWithError()
-	scheduler.runCallbackAndFireEvent(scheduler.options.onCrash, ClosingEvent, true)
+	go scheduler.executeWithError()
+	scheduler.runCallbackAndFireEvent(scheduler.options.onCrash, OnCrashFinishedEvent, true)
 }
 
 // TODO: add tests to onClose callback

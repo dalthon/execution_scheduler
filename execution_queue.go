@@ -48,7 +48,9 @@ func (queue *ExecutionQueue) Pop() *Execution {
 }
 
 func (queue *ExecutionQueue) Remove(execution *Execution) {
-	heap.Remove(&queue.queue, execution.index)
+	if execution.index != -1 {
+		heap.Remove(&queue.queue, execution.index)
+	}
 }
 
 type PriorityQueue []*Execution
