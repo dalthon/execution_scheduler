@@ -65,6 +65,12 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 		return nil
 	}
 
+	options.onCrash = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+
+		return nil
+	}
+
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -129,6 +135,12 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 			},
 			{
 				at:         12,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Its enough!"),
+			},
+			{
+				at:         13,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF},
 				error:      errors.New("Its enough!"),
@@ -198,6 +210,12 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 		return nil
 	}
 
+	options.onCrash = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+
+		return nil
+	}
+
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -252,6 +270,12 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 			},
 			{
 				at:         10,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Its enough!"),
+			},
+			{
+				at:         11,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF},
 				error:      errors.New("Its enough!"),
