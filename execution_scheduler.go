@@ -40,7 +40,6 @@ const (
 	OnCrashFinishedEvent
 	RefreshEvent
 	CrashedEvent
-	NoOpEvent
 )
 
 type schedulerInterface interface {
@@ -58,7 +57,7 @@ type SchedulerOptions struct {
 	onLeaveError    func(scheduler *Scheduler) error
 	onError         func(scheduler *Scheduler) error
 	onCrash         func(scheduler *Scheduler) error
-	onClose         func(scheduler *Scheduler) error
+	onClose         func(scheduler *Scheduler)
 }
 
 type Scheduler struct {
@@ -156,10 +155,10 @@ func (scheduler *Scheduler) eventLoop() {
 			scheduler.parallelRunning -= 1
 			switch scheduler.Status {
 			case ActiveStatus:
-				if scheduler.Status == ActiveStatus {
-					if scheduler.isRunning() || scheduler.isScheduled() {
-						scheduler.execute()
-					} else {
+				if scheduler.isScheduled() {
+					scheduler.execute()
+				} else {
+					if !scheduler.isRunning() {
 						scheduler.setStatus(InactiveStatus)
 					}
 				}
@@ -239,7 +238,7 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 	case ClosingStatus:
 		scheduler.runOnClosingCallback()
 	case ClosedStatus:
-		scheduler.runOnCloseCallback()
+		scheduler.runOnClose()
 	case ErrorStatus:
 		scheduler.runOnErrorCallback()
 	case CrashedStatus:
@@ -361,12 +360,14 @@ func (scheduler *Scheduler) runOnCrashCallback() {
 	scheduler.runCallbackAndFireEvent(scheduler.options.onCrash, OnCrashFinishedEvent, true)
 }
 
-// TODO: add tests to onClose callback
-func (scheduler *Scheduler) runOnCloseCallback() {
+func (scheduler *Scheduler) runOnClose() {
 	if scheduler.waitGroup != nil {
 		scheduler.waitGroup.Done()
 	}
-	scheduler.runCallbackAndFireEvent(scheduler.options.onClose, NoOpEvent, false)
+
+	if scheduler.options.onClose != nil {
+		go scheduler.options.onClose(scheduler)
+	}
 }
 
 func (scheduler *Scheduler) runOnPrepare() {

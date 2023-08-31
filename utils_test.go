@@ -46,8 +46,6 @@ func schedulerEventToString(event ExecutionEvent) string {
 		return "Refresh"
 	case CrashedEvent:
 		return "Crashed"
-	case NoOpEvent:
-		return "NoOp"
 	default:
 		return "Unknown"
 	}
