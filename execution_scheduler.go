@@ -379,7 +379,6 @@ func (scheduler *Scheduler) runOnLeaveErrorCallback() {
 	go scheduler.runAsyncCallbackAndFireEvent(scheduler.options.onLeaveError, RefreshEvent)
 }
 
-// TODO: add tests to onError callback
 func (scheduler *Scheduler) runOnErrorCallback() {
 	scheduler.callbackRunning = true
 	scheduler.runCallbackAndFireEvent(scheduler.options.onError, OnErrorFinishedEvent)
