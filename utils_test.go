@@ -194,6 +194,13 @@ func testDelayedHandler(delay int, result error) testDelayedHandlerParams {
 	}
 }
 
+func testDummyHandler() testDelayedHandlerParams {
+	return testDelayedHandlerParams{
+		delay:  1,
+		result: nil,
+	}
+}
+
 type testTimelineParams struct {
 	delay        int
 	handler      testDelayedHandlerParams
