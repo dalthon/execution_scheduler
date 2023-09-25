@@ -731,6 +731,92 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *te
 	}
 }
 
+func TestCrashedFromPending(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	preparedAt := []time.Duration{}
+	options.onPrepare = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(2 * time.Second)
+		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
+
+		return errors.New("Boom!")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(3 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esS, _esP},
+			},
+			{
+				at:         2,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esX, _esP},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         3,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esX, _esP},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         4,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esX, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         5,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esX, _esX},
+				error:      errors.New("Boom!"),
+			},
+		},
+		map[int]time.Duration{},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 4 * time.Second,
+		},
+	)
+
+	expectedPreparedAt := []time.Duration{2 * time.Second}
+	if !reflect.DeepEqual(preparedAt, expectedPreparedAt) {
+		t.Fatalf("OnPrepare should have finished at %v, but was finished at %v", expectedPreparedAt, preparedAt)
+	}
+
+	expectedCrashedAt := []time.Duration{5 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrashed should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Boom!" {
+		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got %v", scheduler.Err)
+	}
+}
+
 // // TODO: fix TestSchedulerCrashedOnPrepareTimeline
 // func TestSchedulerCrashedOnPrepareTimeline(t *testing.T) {
 //   options := defaultSchedulerOptions()

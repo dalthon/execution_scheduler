@@ -167,7 +167,7 @@ func (scheduler *Scheduler) eventLoop() {
 					scheduler.runOnLeaveErrorCallback()
 				}
 			case CrashedStatus:
-				if !scheduler.isRunning() && !scheduler.isScheduled() {
+				if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 					scheduler.setStatus(ClosedStatus)
 				}
 			}
