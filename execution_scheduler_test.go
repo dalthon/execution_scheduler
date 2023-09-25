@@ -817,6 +817,109 @@ func TestCrashedFromPending(t *testing.T) {
 	}
 }
 
+func TestCrashedFromError(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 3, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	leftErrorAt := []time.Duration{}
+	options.onLeaveError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(2 * time.Second)
+		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
+
+		return errors.New("Boom!")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(2 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         4,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         5,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         6,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         7,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 5 * time.Second,
+		},
+	)
+
+	expectedLeftErrorAt := []time.Duration{5 * time.Second}
+	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
+		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
+	}
+
+	expectedCrashedAt := []time.Duration{7 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrashed should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Boom!" {
+		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got %v", scheduler.Err)
+	}
+}
+
 // // TODO: fix TestSchedulerCrashedOnPrepareTimeline
 // func TestSchedulerCrashedOnPrepareTimeline(t *testing.T) {
 //   options := defaultSchedulerOptions()
