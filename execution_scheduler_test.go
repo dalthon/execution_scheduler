@@ -1416,6 +1416,12 @@ func TestSchedulerClosed(t *testing.T) {
 			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
 	)
+	startedAt := scheduler.clock.Now()
+
+	closedAt := []time.Duration{}
+	options.onClose = func(scheduler *Scheduler) {
+		closedAt = append(closedAt, scheduler.clock.Since(startedAt))
+	}
 
 	timeline.expects(
 		[]testTimelineExpectations{
@@ -1452,6 +1458,11 @@ func TestSchedulerClosed(t *testing.T) {
 			1: 3 * time.Second,
 		},
 	)
+
+	expectedClosedAt := []time.Duration{2 * time.Second}
+	if !reflect.DeepEqual(closedAt, expectedClosedAt) {
+		t.Fatalf("OnClose should have finished at %v, but was finished at %v", expectedClosedAt, closedAt)
+	}
 
 	if scheduler.Err != nil {
 		t.Fatalf("Scheduler should have finished with no error, but got %v", scheduler.Err)
