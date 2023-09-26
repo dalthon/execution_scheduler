@@ -31,13 +31,14 @@ func (queue *ExecutionQueue) Size() int {
 	return len(queue.queue)
 }
 
-func (queue *ExecutionQueue) Top() *Execution {
-	if len(queue.queue) == 0 {
-		return nil
-	}
-
-	return queue.queue[0]
-}
+// TODO: Think about having this function or not
+// func (queue *ExecutionQueue) Top() *Execution {
+//   if len(queue.queue) == 0 {
+//     return nil
+//   }
+//
+//   return queue.queue[0]
+// }
 
 func (queue *ExecutionQueue) Pop() *Execution {
 	if len(queue.queue) == 0 {
