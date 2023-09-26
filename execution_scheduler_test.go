@@ -731,7 +731,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *te
 	}
 }
 
-func TestCrashedFromPending(t *testing.T) {
+func TestSchedulerCrashedFromPending(t *testing.T) {
 	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -817,7 +817,7 @@ func TestCrashedFromPending(t *testing.T) {
 	}
 }
 
-func TestCrashedFromError(t *testing.T) {
+func TestSchedulerCrashedFromError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
@@ -920,7 +920,7 @@ func TestCrashedFromError(t *testing.T) {
 	}
 }
 
-func TestCrashedFromErrorWithOnError(t *testing.T) {
+func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
@@ -1046,7 +1046,7 @@ func TestCrashedFromErrorWithOnError(t *testing.T) {
 	}
 }
 
-func TestCrashedFromClosing(t *testing.T) {
+func TestSchedulerCrashedFromClosing(t *testing.T) {
 	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -1145,7 +1145,7 @@ func TestCrashedFromClosing(t *testing.T) {
 	}
 }
 
-func TestAllInactiveTransitions(t *testing.T) {
+func TestSchedulerAllInactiveTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
