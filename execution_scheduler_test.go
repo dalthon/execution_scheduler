@@ -1267,7 +1267,210 @@ func TestSchedulerClosed(t *testing.T) {
 }
 
 // TODO: Handle Active transitions
-// TODO: Handle Closing transitions
+
+func TestSchedulerFromClosingToCrashed(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	closingAt := []time.Duration{}
+	options.onClosing = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(3 * time.Second)
+		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
+
+		if len(closingAt) > 1 {
+			return errors.New("Boom!")
+		}
+
+		return nil
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(1 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         3,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         4,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         6,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         7,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         8,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         9,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         10,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Boom!"),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 5 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	expectedClosingAt := []time.Duration{5 * time.Second, 9 * time.Second}
+	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
+		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
+	}
+
+	expectedCrashedAt := []time.Duration{10 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrashed should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Boom!" {
+		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got %v", scheduler.Err)
+	}
+}
+
+func TestSchedulerFromClosingToClosed(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	closingAt := []time.Duration{}
+	options.onClosing = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(3 * time.Second)
+		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         3,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         4,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         6,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         7,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         8,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         9,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 5 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	expectedClosingAt := []time.Duration{5 * time.Second, 9 * time.Second}
+	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
+		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
+	}
+
+	if scheduler.Err != nil {
+		t.Fatalf("Scheduler should have finished with no error, but got %v", scheduler.Err)
+	}
+}
 
 // TODO: Handle error going back to Pending
 func TestSchedulerOnClosingTimeline(t *testing.T) {
