@@ -1785,7 +1785,8 @@ func TestSchedulerFromClosingToClosed(t *testing.T) {
 	}
 }
 
-// TODO: Handle error going back to Pending
+// TODO: Check if tests below still makes sense
+
 func TestSchedulerOnClosingTimeline(t *testing.T) {
 	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil)
