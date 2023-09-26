@@ -130,3 +130,68 @@ func TestExecutionExpiration(t *testing.T) {
 		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.Status))
 	}
 }
+
+func TestExecutionCallingBeforeExpire(t *testing.T) {
+	scheduler := newMockedScheduler()
+	handler := newSimpleHandlers(t, 1)
+	execution := NewExecution(handler.handler, handler.errorHandler, Parallel, 0)
+	goroutineCount := runtime.NumGoroutine()
+
+	if execution.Status != ExecutionScheduled {
+		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.Status))
+	}
+
+	execution.setExpiration(scheduler, 3*time.Second)
+	if !execution.call(scheduler) {
+		t.Fatalf("execution.call should run handlers")
+	}
+
+	if runtime.NumGoroutine() != goroutineCount+1 {
+		t.Fatalf("execution calling should have spawn only one new goroutine, but got %d", runtime.NumGoroutine()-goroutineCount)
+	}
+
+	if execution.call(scheduler) {
+		t.Fatalf("execution.call should not run handler more than once")
+	}
+
+	if execution.expire(scheduler, errors.New("Timeout error")) {
+		t.Fatalf("execution can't be expired after it was called")
+	}
+
+	if runtime.NumGoroutine() != goroutineCount+1 {
+		t.Fatalf("execution calling should have spawn only one new goroutine, but got %d", runtime.NumGoroutine()-goroutineCount)
+	}
+
+	if execution.Status != ExecutionRunning {
+		t.Fatalf("execution status after calling should be Running, but got %q", executionStatusToString(execution.Status))
+	}
+
+	handler.wait()
+	if execution.Status != ExecutionFinished {
+		t.Fatalf("execution status after calling should be Finished, but got %q", executionStatusToString(execution.Status))
+	}
+
+	if runtime.NumGoroutine() != goroutineCount {
+		t.Fatalf("no new goroutines should be spawned, but %d we have", runtime.NumGoroutine()-goroutineCount)
+	}
+
+	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{FinishedEvent}) {
+		t.Fatalf("scheduler should have received only a single FinishedEvent")
+	}
+
+	if execution.call(scheduler) {
+		t.Fatalf("execution.call should not run handler more than once")
+	}
+
+	if execution.expire(scheduler, errors.New("Timeout error")) {
+		t.Fatalf("execution can't be expired after it was finished")
+	}
+
+	if runtime.NumGoroutine() != goroutineCount {
+		t.Fatalf("no new goroutines should be spawned, but %d we have", runtime.NumGoroutine()-goroutineCount)
+	}
+
+	if execution.Status != ExecutionFinished {
+		t.Fatalf("execution status after calling should be Finished, but got %q", executionStatusToString(execution.Status))
+	}
+}
