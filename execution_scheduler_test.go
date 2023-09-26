@@ -1137,7 +1137,6 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 
 	errorAt := []time.Duration{}
 	options.onError = func(scheduler *Scheduler) error {
-		fmt.Println(fmt.Sprintf("Exploded #%d!", len(errorAt)))
 		scheduler.clock.Sleep(2 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
