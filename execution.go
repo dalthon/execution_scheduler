@@ -73,14 +73,18 @@ func (execution *Execution) run(scheduler schedulerInterface) {
 	scheduler.getLock().Unlock()
 }
 
-func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration) {
+func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration, beforeExpire func()) {
 	execution.timer = scheduler.getClock().AfterFunc(
 		duration,
-		func() { execution.expire(scheduler, NewTimeoutError()) },
+		func() {
+			if beforeExpire != nil {
+				beforeExpire()
+			}
+			execution.expire(scheduler, NewTimeoutError())
+		},
 	)
 }
 
-// TODO: Create proper Timeout Error
 func (execution *Execution) expire(scheduler schedulerInterface, err error) bool {
 	scheduler.getLock().Lock()
 	defer scheduler.getLock().Unlock()

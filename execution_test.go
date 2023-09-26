@@ -83,7 +83,7 @@ func TestExecutionExpiration(t *testing.T) {
 		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.Status))
 	}
 
-	execution.setExpiration(scheduler, 3*time.Second)
+	execution.setExpiration(scheduler, 3*time.Second, nil)
 	if execution.Status != ExecutionScheduled {
 		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.Status))
 	}
@@ -141,7 +141,7 @@ func TestExecutionCallingBeforeExpire(t *testing.T) {
 		t.Fatalf("execution initial status should be Pending, but got %q", executionStatusToString(execution.Status))
 	}
 
-	execution.setExpiration(scheduler, 3*time.Second)
+	execution.setExpiration(scheduler, 3*time.Second, nil)
 	if !execution.call(scheduler) {
 		t.Fatalf("execution.call should run handlers")
 	}

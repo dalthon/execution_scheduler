@@ -110,6 +110,18 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 			kind,
 			priority,
 		)
+
+		if scheduler.options.executionTimeout != time.Duration(0) {
+			execution.setExpiration(
+				scheduler,
+				scheduler.options.executionTimeout,
+				func() {
+					scheduler.lock.Lock()
+					scheduler.parallelRunning += 1
+					defer scheduler.lock.Unlock()
+				},
+			)
+		}
 	} else {
 		execution = scheduler.serialQueue.Push(
 			handler,
@@ -117,8 +129,19 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 			kind,
 			priority,
 		)
-	}
 
+		if scheduler.options.executionTimeout != time.Duration(0) {
+			execution.setExpiration(
+				scheduler,
+				scheduler.options.executionTimeout,
+				func() {
+					scheduler.lock.Lock()
+					scheduler.parallelRunning += 1
+					defer scheduler.lock.Unlock()
+				},
+			)
+		}
+	}
 	scheduler.signal(ScheduledEvent)
 
 	return execution
@@ -140,6 +163,7 @@ func (scheduler *Scheduler) eventLoop() {
 		scheduler.lock.Lock()
 		switch event {
 		case RefreshEvent:
+			scheduler.callbackRunning = false
 			scheduler.setStatus(PendingStatus)
 		case PreparedEvent:
 			scheduler.setStatus(ActiveStatus)
@@ -368,6 +392,7 @@ func (scheduler *Scheduler) runOnCrash() {
 
 // TODO: add tests to onLeaveError callback
 func (scheduler *Scheduler) runOnLeaveErrorCallback() {
+	scheduler.callbackRunning = true
 	if scheduler.Err != nil {
 		scheduler.signal(CrashedEvent)
 		return
