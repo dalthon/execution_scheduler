@@ -1130,6 +1130,7 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 		[]testTimelineParams{
 			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
 			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 3, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
 			{delay: 4, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
 		},
 	)
@@ -1145,7 +1146,7 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 
 	crashedAt := []time.Duration{}
 	options.onCrash = func(scheduler *Scheduler) {
-		scheduler.clock.Sleep(2 * time.Second)
+		scheduler.clock.Sleep(3 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
 
@@ -1154,55 +1155,63 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 			{
 				at:         0,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esP, _esP, _esP},
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
 			},
 			{
 				at:         1,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esP, _esP},
+				executions: []testExecutionStatus{_esR, _esP, _esP, _esP},
 			},
 			{
 				at:         2,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esR, _esP},
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP},
 			},
 			{
 				at:         3,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esR, _esP},
+				executions: []testExecutionStatus{_esF, _esR, _esR, _esP},
 			},
 			{
 				at:         4,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esS},
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS},
 			},
 			{
 				at:         5,
 				status:     CrashedStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esX},
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esX},
 				error:      errors.New("Exploded #1!"),
 			},
 			{
 				at:         6,
 				status:     CrashedStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esX},
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esX},
 				error:      errors.New("Exploded #1!"),
 			},
 			{
 				at:         7,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esX},
+				error:      errors.New("Exploded #1!"),
+			},
+			{
+				at:         8,
 				status:     ClosedStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esX},
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esX},
 				error:      errors.New("Exploded #1!"),
 			},
 		},
 		map[int]time.Duration{
 			0: 1 * time.Second,
 			1: 2 * time.Second,
+			2: 3 * time.Second,
 		},
 		map[int]time.Duration{
 			0: 2 * time.Second,
 			1: 3 * time.Second,
 			2: 5 * time.Second,
+			3: 5 * time.Second,
 		},
 	)
 
@@ -1211,7 +1220,128 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
 	}
 
-	expectedCrashedAt := []time.Duration{7 * time.Second}
+	expectedCrashedAt := []time.Duration{8 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrashed should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Exploded #1!" {
+		t.Fatalf("Scheduler should have finished with error message \"Exploded #1!\", but got %v", scheduler.Err)
+	}
+}
+
+func TestSchedulerCrashedWaitingRunning(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 3, kind: Parallel, priority: 0, handler: blownUpHandler(5), errorHandler: blownUpHandler(1)},
+			{delay: 4, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	errorAt := []time.Duration{}
+	options.onError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(2 * time.Second)
+		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
+
+		return errors.New(fmt.Sprintf("Exploded #%d!", len(errorAt)))
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(3 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esR, _esP},
+			},
+			{
+				at:         4,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS},
+			},
+			{
+				at:         5,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esX},
+				error:      errors.New("Exploded #1!"),
+			},
+			{
+				at:         6,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esX},
+				error:      errors.New("Exploded #1!"),
+			},
+			{
+				at:         7,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esX},
+				error:      errors.New("Exploded #1!"),
+			},
+			{
+				at:         8,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esX},
+				error:      errors.New("Exploded #1!"),
+			},
+			{
+				at:         9,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esX},
+				error:      errors.New("Exploded #1!"),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 2 * time.Second,
+			2: 3 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 3 * time.Second,
+			2: 8 * time.Second,
+			3: 5 * time.Second,
+		},
+	)
+
+	expectedErrorAt := []time.Duration{5 * time.Second}
+	if !reflect.DeepEqual(errorAt, expectedErrorAt) {
+		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
+	}
+
+	expectedCrashedAt := []time.Duration{8 * time.Second}
 	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
 		t.Fatalf("OnCrashed should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
 	}
