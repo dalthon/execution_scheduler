@@ -51,13 +51,14 @@ type schedulerInterface interface {
 }
 
 type SchedulerOptions struct {
-	inactivityDelay time.Duration
-	onPrepare       func(scheduler *Scheduler) error
-	onClosing       func(scheduler *Scheduler) error
-	onLeaveError    func(scheduler *Scheduler) error
-	onError         func(scheduler *Scheduler) error
-	onCrash         func(scheduler *Scheduler)
-	onClose         func(scheduler *Scheduler)
+	executionTimeout time.Duration
+	inactivityDelay  time.Duration
+	onPrepare        func(scheduler *Scheduler) error
+	onClosing        func(scheduler *Scheduler) error
+	onLeaveError     func(scheduler *Scheduler) error
+	onError          func(scheduler *Scheduler) error
+	onCrash          func(scheduler *Scheduler)
+	onClose          func(scheduler *Scheduler)
 }
 
 type Scheduler struct {

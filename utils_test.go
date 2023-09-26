@@ -14,13 +14,14 @@ import (
 
 func defaultSchedulerOptions() *SchedulerOptions {
 	return &SchedulerOptions{
-		inactivityDelay: time.Duration(0),
-		onPrepare:       nil,
-		onClosing:       nil,
-		onLeaveError:    nil,
-		onError:         nil,
-		onCrash:         nil,
-		onClose:         nil,
+		executionTimeout: time.Duration(0),
+		inactivityDelay:  time.Duration(0),
+		onPrepare:        nil,
+		onClosing:        nil,
+		onLeaveError:     nil,
+		onError:          nil,
+		onCrash:          nil,
+		onClose:          nil,
 	}
 }
 
