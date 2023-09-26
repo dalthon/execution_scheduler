@@ -150,6 +150,8 @@ func (scheduler *Scheduler) eventLoop() {
 				scheduler.execute()
 			case CrashedStatus:
 				go scheduler.cancelExecutions()
+			case ClosedStatus:
+				go scheduler.cancelExecutions()
 			}
 		case FinishedEvent: // TODO: rethink about how to behave on FinishedEvent
 			scheduler.parallelRunning -= 1

@@ -1213,9 +1213,61 @@ func TestSchedulerAllInactiveTransitions(t *testing.T) {
 	}
 }
 
+func TestSchedulerClosed(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         3,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+			},
+			{
+				at:         4,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{
+			1: 3 * time.Second,
+		},
+	)
+
+	if scheduler.Err != nil {
+		t.Fatalf("Scheduler should have finished with no error, but got %v", scheduler.Err)
+	}
+}
+
 // TODO: Handle Active transitions
 // TODO: Handle Closing transitions
-// TODO: Handle Closed transitions
 
 // TODO: Handle error going back to Pending
 func TestSchedulerOnClosingTimeline(t *testing.T) {
