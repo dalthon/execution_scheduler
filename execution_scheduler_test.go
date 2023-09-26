@@ -507,6 +507,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 		scheduler,
 		[]testTimelineParams{
 			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
 		},
 	)
@@ -516,41 +517,43 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 			{
 				at:         0,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esP, _esP},
+				executions: []testExecutionStatus{_esP, _esP, _esP},
 			},
 			{
 				at:         1,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esP},
+				executions: []testExecutionStatus{_esR, _esP, _esP},
 			},
 			{
 				at:         2,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esR},
+				executions: []testExecutionStatus{_esR, _esR, _esR},
 			},
 			{
 				at:         3,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esR},
+				executions: []testExecutionStatus{_esF, _esR, _esR},
 			},
 			{
 				at:         4,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esR},
+				executions: []testExecutionStatus{_esF, _esF, _esR},
 			},
 			{
 				at:         5,
 				status:     ClosedStatus,
-				executions: []testExecutionStatus{_esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esF},
 				error:      NewSchedulerNotRecovered(),
 			},
 		},
 		map[int]time.Duration{
 			0: 1 * time.Second,
 			1: 2 * time.Second,
+			2: 2 * time.Second,
 		},
 		map[int]time.Duration{
 			0: 2 * time.Second,
+			1: 3 * time.Second,
 		},
 	)
 }
