@@ -97,7 +97,6 @@ func NewScheduler(options *SchedulerOptions, waitGroup *sync.WaitGroup) *Schedul
 	return scheduler
 }
 
-// TODO: validate status denying schedule on Crashed and Closed statuses
 func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
@@ -372,9 +371,6 @@ func (scheduler *Scheduler) runOnPrepare() {
 	scheduler.runPrepareCallback()
 }
 
-// TODO: add tests to onCrash callback
-// TODO: should close only after all executions are finished
-// TODO: should not go to closing, but to close
 func (scheduler *Scheduler) runOnCrash() {
 	go scheduler.cancelExecutions()
 
