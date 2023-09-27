@@ -161,18 +161,59 @@ func (scheduler *Scheduler) eventLoop() {
 	for {
 		event := <-scheduler.events
 		scheduler.lock.Lock()
-		scheduler.processEvent(event)
+
+		scheduler.closedCallback(event)
+		scheduler.finishedExecutions(event)
+		switch scheduler.Status {
+		case PendingStatus:
+			scheduler.processEventOnPending(event)
+		// case ActiveStatus:
+		// case InactiveStatus:
+		// case ClosingStatus:
+		// case ClosedStatus:
+		// case ErrorStatus:
+		// case CrashedStatus:
+		// case ShutdownStatus:
+		default:
+			scheduler.processEvent(event)
+		}
+
 		scheduler.lock.Unlock()
+	}
+}
+
+func (scheduler *Scheduler) closedCallback(event ExecutionEvent) {
+	if event == RefreshEvent || event == PreparedEvent || event == ClosingEvent || event == OnErrorFinishedEvent || event == OnCrashFinishedEvent {
+		scheduler.callbackRunning = false
+	}
+}
+
+func (scheduler *Scheduler) finishedExecutions(event ExecutionEvent) {
+	if event == FinishedEvent || event == ErrorEvent {
+		scheduler.parallelRunning -= 1
+	}
+}
+
+func (scheduler *Scheduler) processEventOnPending(event ExecutionEvent) {
+	switch event {
+	case ErrorEvent:
+		scheduler.setStatus(ErrorStatus)
+	case PreparedEvent:
+		scheduler.setStatus(ActiveStatus)
+	case CrashedEvent:
+		scheduler.setStatus(CrashedStatus)
+	case ShutdownEvent:
+		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
 func (scheduler *Scheduler) processEvent(event ExecutionEvent) {
 	switch event {
 	case RefreshEvent:
-		scheduler.callbackRunning = false
+		// scheduler.callbackRunning = false
 		scheduler.setStatus(PendingStatus)
 	case PreparedEvent:
-		scheduler.callbackRunning = false
+		// scheduler.callbackRunning = false
 		switch scheduler.Status {
 		case ShutdownStatus:
 			scheduler.tryToClose()
@@ -193,7 +234,7 @@ func (scheduler *Scheduler) processEvent(event ExecutionEvent) {
 			scheduler.tryToClose()
 		}
 	case FinishedEvent: // TODO: rethink about how to behave on FinishedEvent
-		scheduler.parallelRunning -= 1
+		// scheduler.parallelRunning -= 1
 		switch scheduler.Status {
 		case ActiveStatus:
 			if scheduler.isScheduled() || scheduler.isRunning() {
@@ -215,14 +256,14 @@ func (scheduler *Scheduler) processEvent(event ExecutionEvent) {
 	case WakedEvent:
 		scheduler.setStatus(ClosingStatus)
 	case ClosingEvent:
-		scheduler.callbackRunning = false
+		// scheduler.callbackRunning = false
 		if scheduler.isRunning() || scheduler.isScheduled() {
 			scheduler.setStatus(ActiveStatus)
 		} else {
 			scheduler.setStatus(ClosedStatus)
 		}
 	case ErrorEvent:
-		scheduler.parallelRunning -= 1
+		// scheduler.parallelRunning -= 1
 		switch scheduler.Status {
 		case ErrorStatus:
 			if !scheduler.callbackRunning && !scheduler.isRunning() {
@@ -236,19 +277,18 @@ func (scheduler *Scheduler) processEvent(event ExecutionEvent) {
 			scheduler.setStatus(ErrorStatus)
 		}
 	case OnErrorFinishedEvent:
-		scheduler.callbackRunning = false
+		// scheduler.callbackRunning = false
 		if !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
 	case OnCrashFinishedEvent:
-		scheduler.callbackRunning = false
+		// scheduler.callbackRunning = false
 		if !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
-		scheduler.Err = NewShutdownError()
 		scheduler.setStatus(ShutdownStatus)
 	}
 }
@@ -402,6 +442,7 @@ func (scheduler *Scheduler) runOnCrash() {
 }
 
 func (scheduler *Scheduler) runOnShutdown() {
+	scheduler.Err = NewShutdownError()
 	scheduler.tryToClose()
 }
 
