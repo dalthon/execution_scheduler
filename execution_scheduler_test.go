@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	"testing"
@@ -2370,6 +2371,69 @@ func TestSchedulerFromClosingToClosed(t *testing.T) {
 	expectedClosingAt := []time.Duration{5 * time.Second, 9 * time.Second}
 	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
 		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
+	}
+
+	if scheduler.Err != nil {
+		t.Fatalf("Scheduler should have finished with no error, but got %v", scheduler.Err)
+	}
+}
+
+func TestSchedulerWaitForWaitGroup(t *testing.T) {
+	var waitGroup sync.WaitGroup
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, &waitGroup)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDummyHandler()},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+	var finishedAt time.Duration
+	go func() {
+		waitGroup.Wait()
+		finishedAt = scheduler.clock.Since(startedAt)
+	}()
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         4,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	expectedFinishedAt := 4 * time.Second
+	if expectedFinishedAt != finishedAt {
+		t.Fatalf("Scheduler should have finished at %v, but did at %v", expectedFinishedAt, finishedAt)
 	}
 
 	if scheduler.Err != nil {
