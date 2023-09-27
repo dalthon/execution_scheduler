@@ -392,16 +392,13 @@ func (scheduler *Scheduler) runOnCrash() {
 	}()
 }
 
-// TODO: add tests to onLeaveError callback
 func (scheduler *Scheduler) runOnLeaveErrorCallback() {
 	scheduler.callbackRunning = true
-	if scheduler.Err != nil {
-		scheduler.signal(CrashedEvent)
-		return
-	}
 
 	if scheduler.options.onLeaveError == nil {
-		scheduler.Err = NewSchedulerNotRecovered()
+		if scheduler.Err == nil {
+			scheduler.Err = NewSchedulerNotRecovered()
+		}
 		scheduler.signal(CrashedEvent)
 		return
 	}
