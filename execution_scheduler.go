@@ -175,7 +175,8 @@ func (scheduler *Scheduler) eventLoop() {
 			scheduler.processEventOnClosing(event)
 		case ClosedStatus:
 			scheduler.processEventOnClosed(event)
-		// case ErrorStatus:
+		case ErrorStatus:
+			scheduler.processEventOnError(event)
 		// case CrashedStatus:
 		// case ShutdownStatus:
 		default:
@@ -265,6 +266,29 @@ func (scheduler *Scheduler) processEventOnClosing(event ExecutionEvent) {
 func (scheduler *Scheduler) processEventOnClosed(event ExecutionEvent) {
 	if event == ScheduledEvent {
 		go scheduler.cancelExecutions()
+	}
+}
+
+func (scheduler *Scheduler) processEventOnError(event ExecutionEvent) {
+	switch event {
+	case FinishedEvent:
+		if !scheduler.callbackRunning && !scheduler.isRunning() {
+			scheduler.runOnLeaveErrorCallback()
+		}
+	case RefreshEvent:
+		scheduler.setStatus(PendingStatus)
+	case OnErrorFinishedEvent:
+		if !scheduler.isRunning() {
+			scheduler.runOnLeaveErrorCallback()
+		}
+	case ErrorEvent:
+		if !scheduler.callbackRunning && !scheduler.isRunning() {
+			scheduler.runOnLeaveErrorCallback()
+		}
+	case CrashedEvent:
+		scheduler.setStatus(CrashedStatus)
+	case ShutdownEvent:
+		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
