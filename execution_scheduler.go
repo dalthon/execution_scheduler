@@ -199,6 +199,12 @@ func (scheduler *Scheduler) eventLoop() {
 			}
 		case WakedEvent:
 			if scheduler.isRunning() || scheduler.isScheduled() {
+				// This case may never happen since WakeEvent is sent once inactivity timesout,
+				// but while inactive there is nothing running or scheduled.
+				// In case there is, somethign is wrong, because once someting gets scheduled while
+				// inactive, it should have gone back to active state.
+				// So this case is handled here just in case there is some race condition that I didn't
+				// anticipated or replicated in tests.
 				scheduler.setStatus(ActiveStatus)
 			} else {
 				scheduler.setStatus(ClosingStatus)

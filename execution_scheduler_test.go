@@ -1917,7 +1917,169 @@ func TestSchedulerClosed(t *testing.T) {
 	}
 }
 
-// TODO: Handle Active transitions
+func TestSchedulerAllActiveTransitions(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 3 * time.Second
+	scheduler := NewScheduler(options, nil)
+	blownHandlerCount := 0
+	blownUpHandler := func() testDelayedHandlerParams {
+		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDummyHandler()},
+			{delay: 8, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 11, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	leftErrorAt := []time.Duration{}
+	options.onLeaveError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	closingAt := []time.Duration{}
+	options.onClosing = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(3 * time.Second)
+		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esF, _esR, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esP, _esP},
+			},
+			{
+				at:         4,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esP, _esP},
+			},
+			{
+				at:         5,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esP, _esP},
+			},
+			{
+				at:         6,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esP, _esP},
+			},
+			{
+				at:         7,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esP, _esP},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR, _esP},
+			},
+			{
+				at:         9,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esP},
+			},
+			{
+				at:         10,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esP},
+			},
+			{
+				at:         11,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esR},
+			},
+			{
+				at:         12,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         13,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         14,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         15,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         16,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         17,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         18,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 1 * time.Second,
+			2: 2 * time.Second,
+			3: 8 * time.Second,
+			4: 11 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+		},
+	)
+
+	expectedLeftErrorAt := []time.Duration{6 * time.Second}
+	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
+		t.Fatalf("OnLeftError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
+	}
+
+	expectedClosingAt := []time.Duration{18 * time.Second}
+	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
+		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
+	}
+
+	if scheduler.Err != nil {
+		t.Fatalf("Scheduler should have finished with no error, but got %v", scheduler.Err)
+	}
+}
 
 func TestSchedulerFromClosingToCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
