@@ -2571,6 +2571,69 @@ func TestSchedulerShutdownOnActive(t *testing.T) {
 	}
 }
 
+func TestSchedulerShutdownOnInactive(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 3 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+
+	scheduler.getClock().AfterFunc(3*time.Second, scheduler.Shutdown)
+	scheduler.getClock().AfterFunc(4*time.Second, scheduler.Shutdown)
+
+	shutdownError := NewShutdownError()
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         2,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         3,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      shutdownError,
+			},
+			{
+				at:         4,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      shutdownError,
+			},
+			{
+				at:         5,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      shutdownError,
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	if scheduler.Err != shutdownError {
+		t.Fatalf("Scheduler should have finished with error %v, but got %v", shutdownError, scheduler.Err)
+	}
+}
+
 // TODO: Check if tests below still makes sense
 
 func TestSchedulerOnClosingTimeline(t *testing.T) {
