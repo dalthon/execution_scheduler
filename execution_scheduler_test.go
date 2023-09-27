@@ -2717,6 +2717,100 @@ func TestSchedulerShutdownOnClosing(t *testing.T) {
 	}
 }
 
+func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	errorAt := []time.Duration{}
+	options.onError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
+
+		return errors.New("Boom!")
+	}
+
+	scheduler.getClock().AfterFunc(4*time.Second, scheduler.Shutdown)
+
+	shutdownError := NewShutdownError()
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esS, _esP},
+			},
+			{
+				at:         4,
+				status:     ShutdownStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX, _esP},
+				error:      shutdownError,
+			},
+			{
+				at:         5,
+				status:     ShutdownStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX, _esX},
+				error:      shutdownError,
+			},
+			{
+				at:         6,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX, _esX},
+				error:      shutdownError,
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 2 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			2: 4 * time.Second,
+			3: 5 * time.Second,
+		},
+	)
+
+	expectedErrorAt := []time.Duration{4 * time.Second}
+	if !reflect.DeepEqual(errorAt, expectedErrorAt) {
+		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
+	}
+
+	if scheduler.Err != shutdownError {
+		t.Fatalf("Scheduler should have finished with error %v, but got %v", shutdownError, scheduler.Err)
+	}
+}
+
 // TODO: Check if tests below still makes sense
 
 func TestSchedulerOnClosingTimeline(t *testing.T) {
