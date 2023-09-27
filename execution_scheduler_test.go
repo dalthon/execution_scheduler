@@ -2634,6 +2634,89 @@ func TestSchedulerShutdownOnInactive(t *testing.T) {
 	}
 }
 
+func TestSchedulerShutdownOnClosing(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	closingAt := []time.Duration{}
+	options.onClosing = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(4 * time.Second)
+		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	scheduler.getClock().AfterFunc(4*time.Second, scheduler.Shutdown)
+
+	shutdownError := NewShutdownError()
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP},
+			},
+			{
+				at:         2,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         3,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esS},
+			},
+			{
+				at:         4,
+				status:     ShutdownStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+				error:      shutdownError,
+			},
+			{
+				at:         5,
+				status:     ShutdownStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+				error:      shutdownError,
+			},
+			{
+				at:         6,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esX},
+				error:      shutdownError,
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{
+			1: 4 * time.Second,
+		},
+	)
+
+	expectedClosingAt := []time.Duration{6 * time.Second}
+	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
+		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
+	}
+
+	if scheduler.Err != shutdownError {
+		t.Fatalf("Scheduler should have finished with error %v, but got %v", shutdownError, scheduler.Err)
+	}
+}
+
 // TODO: Check if tests below still makes sense
 
 func TestSchedulerOnClosingTimeline(t *testing.T) {
