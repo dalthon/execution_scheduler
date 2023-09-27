@@ -167,7 +167,8 @@ func (scheduler *Scheduler) eventLoop() {
 		switch scheduler.Status {
 		case PendingStatus:
 			scheduler.processEventOnPending(event)
-		// case ActiveStatus:
+		case ActiveStatus:
+			scheduler.processEventOnActive(event)
 		// case InactiveStatus:
 		// case ClosingStatus:
 		// case ClosedStatus:
@@ -196,10 +197,29 @@ func (scheduler *Scheduler) finishedExecutions(event ExecutionEvent) {
 
 func (scheduler *Scheduler) processEventOnPending(event ExecutionEvent) {
 	switch event {
-	case ErrorEvent:
-		scheduler.setStatus(ErrorStatus)
 	case PreparedEvent:
 		scheduler.setStatus(ActiveStatus)
+	case ErrorEvent:
+		scheduler.setStatus(ErrorStatus)
+	case CrashedEvent:
+		scheduler.setStatus(CrashedStatus)
+	case ShutdownEvent:
+		scheduler.setStatus(ShutdownStatus)
+	}
+}
+
+func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
+	switch event {
+	case ScheduledEvent:
+		scheduler.execute()
+	case FinishedEvent:
+		if scheduler.isScheduled() || scheduler.isRunning() {
+			scheduler.execute()
+		} else {
+			scheduler.setStatus(InactiveStatus)
+		}
+	case ErrorEvent:
+		scheduler.setStatus(ErrorStatus)
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
