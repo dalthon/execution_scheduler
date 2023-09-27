@@ -203,8 +203,6 @@ func (scheduler *Scheduler) processEventOnPending(event ExecutionEvent) {
 	switch event {
 	case PreparedEvent:
 		scheduler.setStatus(ActiveStatus)
-	// case ErrorEvent:
-	//   scheduler.setStatus(ErrorStatus)
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
@@ -224,8 +222,6 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 		}
 	case ErrorEvent:
 		scheduler.setStatus(ErrorStatus)
-	// case CrashedEvent:
-	//   scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
@@ -237,10 +233,6 @@ func (scheduler *Scheduler) processEventOnInactive(event ExecutionEvent) {
 		scheduler.setStatus(ActiveStatus)
 	case WakedEvent:
 		scheduler.setStatus(ClosingStatus)
-	// case ErrorEvent:
-	//   scheduler.setStatus(ErrorStatus)
-	// case CrashedEvent:
-	//   scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
@@ -254,8 +246,6 @@ func (scheduler *Scheduler) processEventOnClosing(event ExecutionEvent) {
 		} else {
 			scheduler.setStatus(ClosedStatus)
 		}
-	// case ErrorEvent:
-	//   scheduler.setStatus(ErrorStatus)
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
@@ -308,8 +298,6 @@ func (scheduler *Scheduler) processEventOnCrashed(event ExecutionEvent) {
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	// case CrashedEvent:
-	//   scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
