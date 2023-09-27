@@ -32,3 +32,14 @@ func NewSchedulerNotRecovered() *SchedulerNotRecovered {
 func (err *SchedulerNotRecovered) Error() string {
 	return "Scheduler could not be recovered from error"
 }
+
+type ShutdownError struct {
+}
+
+func NewShutdownError() *ShutdownError {
+	return &ShutdownError{}
+}
+
+func (err *ShutdownError) Error() string {
+	return "Scheduler was shut down"
+}

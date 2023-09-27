@@ -25,6 +25,7 @@ const (
 	ClosedStatus
 	ErrorStatus
 	CrashedStatus
+	ShutdownStatus
 )
 
 type ExecutionEvent uint64
@@ -40,6 +41,7 @@ const (
 	OnCrashFinishedEvent
 	RefreshEvent
 	CrashedEvent
+	ShutdownEvent
 )
 
 type schedulerInterface interface {
@@ -151,9 +153,8 @@ func (scheduler *Scheduler) Run() {
 	scheduler.runPrepareCallback()
 }
 
-// TODO: test and think about ForceClose() corner cases
-func (scheduler *Scheduler) ForceClose() {
-	scheduler.signal(ClosingEvent)
+func (scheduler *Scheduler) Shutdown() {
+	scheduler.signal(ShutdownEvent)
 }
 
 func (scheduler *Scheduler) eventLoop() {

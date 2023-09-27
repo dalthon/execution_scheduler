@@ -47,6 +47,8 @@ func schedulerEventToString(event ExecutionEvent) string {
 		return "Refresh"
 	case CrashedEvent:
 		return "Crashed"
+	case ShutdownEvent:
+		return "Shutdown"
 	default:
 		return "Unknown"
 	}
@@ -68,6 +70,8 @@ func schedulerStatusToString(status SchedulerStatus) string {
 		return "Error"
 	case CrashedStatus:
 		return "Crashed"
+	case ShutdownStatus:
+		return "Shutdown"
 	default:
 		return "Unknown"
 	}
