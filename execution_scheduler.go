@@ -166,6 +166,7 @@ func (scheduler *Scheduler) eventLoop() {
 			scheduler.callbackRunning = false
 			scheduler.setStatus(PendingStatus)
 		case PreparedEvent:
+			scheduler.callbackRunning = false
 			switch scheduler.Status {
 			case ShutdownStatus:
 				scheduler.tryToClose()
@@ -202,10 +203,13 @@ func (scheduler *Scheduler) eventLoop() {
 				if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 					scheduler.setStatus(ClosedStatus)
 				}
+			case ShutdownStatus:
+				scheduler.tryToClose()
 			}
 		case WakedEvent:
 			scheduler.setStatus(ClosingStatus)
 		case ClosingEvent:
+			scheduler.callbackRunning = false
 			if scheduler.isRunning() || scheduler.isScheduled() {
 				scheduler.setStatus(ActiveStatus)
 			} else {
@@ -425,10 +429,12 @@ func (scheduler *Scheduler) runOnErrorCallback() {
 }
 
 func (scheduler *Scheduler) runPrepareCallback() {
+	scheduler.callbackRunning = true
 	scheduler.runCallbackAndFireEvent(scheduler.options.onPrepare, PreparedEvent)
 }
 
 func (scheduler *Scheduler) runOnClosingCallback() {
+	scheduler.callbackRunning = true
 	scheduler.runCallbackAndFireEvent(scheduler.options.onClosing, ClosingEvent)
 }
 
