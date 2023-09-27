@@ -200,8 +200,8 @@ func (scheduler *Scheduler) processEventOnPending(event ExecutionEvent) {
 	switch event {
 	case PreparedEvent:
 		scheduler.setStatus(ActiveStatus)
-	case ErrorEvent:
-		scheduler.setStatus(ErrorStatus)
+	// case ErrorEvent:
+	//   scheduler.setStatus(ErrorStatus)
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
@@ -221,8 +221,8 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 		}
 	case ErrorEvent:
 		scheduler.setStatus(ErrorStatus)
-	case CrashedEvent:
-		scheduler.setStatus(CrashedStatus)
+	// case CrashedEvent:
+	//   scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
