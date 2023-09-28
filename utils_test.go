@@ -35,6 +35,8 @@ func schedulerEventToString(event ExecutionEvent) string {
 		return "FinishedParallel"
 	case FinishedSerialEvent:
 		return "FinishedSerial"
+	case ExpiredFinishedSerialEvent:
+		return "ExpiredFinishedSerial"
 	case WakedEvent:
 		return "Waked"
 	case ClosingEvent:

@@ -31,8 +31,11 @@ const (
 type ExecutionEvent uint64
 
 const callbackEventsMask = 0x100
+
+const finishMasks = 0xE00
 const parallelFinishMask = 0x200
-const serialFinishMask = 0x400
+const serialCalledFinishMask = 0x400
+const serialExpiredFinishMask = 0x800
 
 const (
 	ScheduledEvent ExecutionEvent = iota
@@ -49,8 +52,10 @@ const (
 	FinishedParallelEvent ExecutionEvent = parallelFinishMask | iota
 	ErrorParallelEvent
 
-	FinishedSerialEvent ExecutionEvent = serialFinishMask | iota
+	FinishedSerialEvent ExecutionEvent = serialCalledFinishMask | iota
 	ErrorSerialEvent
+
+	ExpiredFinishedSerialEvent ExecutionEvent = serialExpiredFinishMask | iota
 	ExpiredSerialEvent
 )
 
@@ -189,14 +194,13 @@ func (scheduler *Scheduler) closedCallback(event ExecutionEvent) {
 }
 
 func (scheduler *Scheduler) finishedExecutions(event ExecutionEvent) {
-	if (event & parallelFinishMask) == parallelFinishMask {
+	switch event & finishMasks {
+	case parallelFinishMask:
 		scheduler.parallelRunning -= 1
-	}
-
-	if (event & serialFinishMask) == serialFinishMask {
-		if event != ExpiredSerialEvent {
-			scheduler.currentSerial = nil
-		}
+	case serialCalledFinishMask:
+		scheduler.currentSerial = nil
+		scheduler.serialRunning -= 1
+	case serialExpiredFinishMask:
 		scheduler.serialRunning -= 1
 	}
 }
@@ -225,6 +229,12 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 	case ErrorParallelEvent:
 		scheduler.setStatus(ErrorStatus)
 	case FinishedSerialEvent:
+		if scheduler.isScheduled() || scheduler.isRunning() {
+			scheduler.execute()
+		} else {
+			scheduler.setStatus(InactiveStatus)
+		}
+	case ExpiredFinishedSerialEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.execute()
 		} else {
@@ -281,6 +291,10 @@ func (scheduler *Scheduler) processEventOnError(event ExecutionEvent) {
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
+	case ExpiredFinishedSerialEvent:
+		if !scheduler.callbackRunning && !scheduler.isRunning() {
+			scheduler.runOnLeaveErrorCallback()
+		}
 	case RefreshEvent:
 		scheduler.setStatus(PendingStatus)
 	case OnErrorFinishedEvent:
@@ -316,6 +330,10 @@ func (scheduler *Scheduler) processEventOnCrashed(event ExecutionEvent) {
 			scheduler.setStatus(ClosedStatus)
 		}
 	case FinishedSerialEvent:
+		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
+			scheduler.setStatus(ClosedStatus)
+		}
+	case ExpiredFinishedSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}

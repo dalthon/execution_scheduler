@@ -108,7 +108,11 @@ func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err er
 	}
 
 	if err == nil {
-		scheduler.signal(FinishedSerialEvent)
+		if called {
+			scheduler.signal(FinishedSerialEvent)
+		} else {
+			scheduler.signal(ExpiredFinishedSerialEvent)
+		}
 		return
 	}
 
