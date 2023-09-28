@@ -62,11 +62,7 @@ func (execution *Execution) run(scheduler schedulerInterface) {
 		err = execution.errorHandler(err)
 	}
 
-	if err == nil {
-		scheduler.signal(FinishedEvent)
-	} else {
-		scheduler.signal(ErrorEvent)
-	}
+	execution.notifyScheduler(scheduler, err)
 
 	scheduler.getLock().Lock()
 	execution.Status = ExecutionFinished
@@ -96,14 +92,18 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 
 		go func() {
 			err := execution.errorHandler(err)
-			if err == nil {
-				scheduler.signal(FinishedEvent)
-			} else {
-				scheduler.signal(ErrorEvent)
-			}
+			execution.notifyScheduler(scheduler, err)
 		}()
 		return true
 	}
 
 	return false
+}
+
+func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error) {
+	if err == nil {
+		scheduler.signal(FinishedEvent)
+	} else {
+		scheduler.signal(ErrorEvent)
+	}
 }
