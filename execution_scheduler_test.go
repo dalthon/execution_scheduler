@@ -3737,6 +3737,12 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 			{delay: 1, kind: Serial, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
 			{delay: 7, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
 			{delay: 7, kind: Serial, priority: 0, handler: blownUpHandler(3), errorHandler: blownUpHandler(1)},
+			{delay: 14, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 14, kind: Serial, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
+			{delay: 16, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 24, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 24, kind: Serial, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
+			{delay: 25, kind: Serial, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -3754,82 +3760,172 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 			{
 				at:         0,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         1,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esR, _esP, _esP},
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         2,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esR, _esP, _esP},
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         3,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esR, _esP, _esP},
+				executions: []testExecutionStatus{_esF, _esR, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         4,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esR, _esP, _esP},
+				executions: []testExecutionStatus{_esF, _esR, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         5,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esP, _esP},
+				executions: []testExecutionStatus{_esF, _esF, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         6,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esP, _esP},
+				executions: []testExecutionStatus{_esF, _esF, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         7,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esS, _esS},
+				executions: []testExecutionStatus{_esF, _esF, _esS, _esS, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         8,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esR, _esR},
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esR, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         9,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esR, _esR},
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esR, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         10,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         11,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         12,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         13,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         14,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esS, _esS, _esP, _esP, _esP, _esP},
 			},
 			{
 				at:         15,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esR, _esR, _esP, _esP, _esP, _esP},
+			},
+			{
+				at:         16,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esR, _esR, _esS, _esP, _esP, _esP},
+			},
+			{
+				at:         17,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esR, _esS, _esP, _esP, _esP},
+			},
+			{
+				at:         18,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esR, _esS, _esP, _esP, _esP},
+			},
+			{
+				at:         19,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esP, _esP, _esP},
+			},
+			{
+				at:         20,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esP, _esP, _esP},
+			},
+			{
+				at:         21,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esP, _esP, _esP},
+			},
+			{
+				at:         22,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esP, _esP, _esP},
+			},
+			{
+				at:         23,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esP, _esP, _esP},
+			},
+			{
+				at:         24,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esR, _esR, _esP},
+			},
+			{
+				at:         25,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esR, _esR, _esS},
+			},
+			{
+				at:         26,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esR, _esS},
+			},
+			{
+				at:         27,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esR, _esS},
+			},
+			{
+				at:         28,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
+			},
+			{
+				at:         29,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
+			},
+			{
+				at:         30,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
+			},
+			{
+				at:         31,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
+			},
+			{
+				at:         32,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
+			},
+			{
+				at:         33,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
 			},
 		},
 		map[int]time.Duration{
@@ -3837,15 +3933,23 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 			1: 1 * time.Second,
 			2: 8 * time.Second,
 			3: 8 * time.Second,
+			4: 15 * time.Second,
+			5: 15 * time.Second,
+			7: 24 * time.Second,
+			8: 24 * time.Second,
 		},
 		map[int]time.Duration{
 			0: 2 * time.Second,
 			2: 9 * time.Second,
 			3: 11 * time.Second,
+			4: 16 * time.Second,
+			6: 19 * time.Second,
+			7: 25 * time.Second,
+			9: 28 * time.Second,
 		},
 	)
 
-	expectedLeftError := []time.Duration{8 * time.Second, 15 * time.Second}
+	expectedLeftError := []time.Duration{8 * time.Second, 15 * time.Second, 23 * time.Second, 32 * time.Second}
 	if !reflect.DeepEqual(leftErrorAt, expectedLeftError) {
 		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftError, leftErrorAt)
 	}
