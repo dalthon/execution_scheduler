@@ -7,7 +7,7 @@ DOCKER_RUN := docker run --rm -v $(DOCKER_WORKDIR):/app -it
 DOCKER_BIN := $(shell which docker)
 
 define docker_run
-	if [ -n "$(DOCKER_BIN)" ]; then echo "Running on $1 container..." && $(DOCKER_RUN) $1 $2; else $2; fi;
+	if [ -n "$(DOCKER_BIN)" ]; then echo "Running on $1 container..." && $(DOCKER_RUN) --name $1-$2 $1 $3; else $3; fi;
 endef
 
 default: help ## Defaults to help
@@ -23,19 +23,19 @@ build :## Builds docker image
 .PHONY: build
 
 shell: ## Runs shell inside container
-	@$(call docker_run,$(IMAGE_NAME),$(SH))
+	@$(call docker_run,$(IMAGE_NAME),$@,$(SH))
 .PHONY: shell
 
 test: ## Runs tests
-	@$(call docker_run,$(IMAGE_NAME),go test)
+	@$(call docker_run,$(IMAGE_NAME),$@,go test)
 .PHONY: test
 
 test-%: ## Runs specific test
-	@$(call docker_run,$(IMAGE_NAME),go test -run $*)
+	@$(call docker_run,$(IMAGE_NAME),$@,go test -run $*)
 .PHONY: test-%
 
 make-%: ## Runs make tasks
-	@$(call docker_run,$(IMAGE_NAME),make $*)
+	@$(call docker_run,$(IMAGE_NAME),$@,make $*)
 .PHONY: make-%
 
 cover: make-cover ## Runs tests with cover and output its result
