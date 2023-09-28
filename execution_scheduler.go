@@ -255,7 +255,7 @@ func (scheduler *Scheduler) processEventOnClosing(event ExecutionEvent) {
 
 func (scheduler *Scheduler) processEventOnClosed(event ExecutionEvent) {
 	if event == ScheduledEvent {
-		go scheduler.cancelExecutions()
+		scheduler.cancelExecutions()
 	}
 }
 
@@ -285,7 +285,7 @@ func (scheduler *Scheduler) processEventOnError(event ExecutionEvent) {
 func (scheduler *Scheduler) processEventOnCrashed(event ExecutionEvent) {
 	switch event {
 	case ScheduledEvent:
-		go scheduler.cancelExecutions()
+		scheduler.cancelExecutions()
 	case FinishedEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
@@ -363,9 +363,6 @@ func (scheduler *Scheduler) execute() {
 
 // TODO: handle serial execution
 func (scheduler *Scheduler) cancelExecutions() {
-	scheduler.lock.Lock()
-	defer scheduler.lock.Unlock()
-
 	err := NewSchedulerCrashedError()
 
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
@@ -448,14 +445,14 @@ func (scheduler *Scheduler) runOnPrepare() {
 }
 
 func (scheduler *Scheduler) runOnCrash() {
-	go scheduler.cancelExecutions()
+	scheduler.callbackRunning = true
+	scheduler.cancelExecutions()
 
 	if scheduler.options.onCrash == nil {
 		scheduler.signal(OnCrashFinishedEvent)
 		return
 	}
 
-	scheduler.callbackRunning = true
 	go func() {
 		scheduler.options.onCrash(scheduler)
 		scheduler.signal(OnCrashFinishedEvent)
@@ -471,7 +468,7 @@ func (scheduler *Scheduler) tryToClose() {
 	if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 		scheduler.setStatus(ClosedStatus)
 	} else {
-		go scheduler.cancelExecutions()
+		scheduler.cancelExecutions()
 	}
 }
 
