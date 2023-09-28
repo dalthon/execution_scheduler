@@ -148,7 +148,6 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 	return execution
 }
 
-// TODO: think about not having it
 func (scheduler *Scheduler) Run() {
 	scheduler.runPrepareCallback()
 }

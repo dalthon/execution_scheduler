@@ -3,7 +3,6 @@ package execution_scheduler
 import "container/heap"
 
 // Attention: ExecutionQueue is not thread safe!
-// TODO: Cover ExecutionQueue tests
 type ExecutionQueue struct {
 	queue PriorityQueue
 }
