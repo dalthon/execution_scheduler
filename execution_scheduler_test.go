@@ -416,7 +416,7 @@ func TestSchedulerSerialExpiration(t *testing.T) {
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDelayedHandler(1, errors.New("Boom!"))},
 			{delay: 4, kind: Serial, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
 			{delay: 9, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDelayedHandler(0, nil)},
 		},

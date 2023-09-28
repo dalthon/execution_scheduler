@@ -43,6 +43,8 @@ func schedulerEventToString(event ExecutionEvent) string {
 		return "Error"
 	case ErrorSerialEvent:
 		return "ErrorSerial"
+	case ExpiredSerialEvent:
+		return "ExpiredSerial"
 	case OnErrorFinishedEvent:
 		return "OnErrorFinished"
 	case OnCrashFinishedEvent:

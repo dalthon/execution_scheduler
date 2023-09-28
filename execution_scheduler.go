@@ -426,7 +426,6 @@ func (scheduler *Scheduler) beforeExpireCall(execution *Execution) {
 		return
 	}
 
-	scheduler.currentSerial = execution
 	scheduler.serialRunning += 1
 }
 
