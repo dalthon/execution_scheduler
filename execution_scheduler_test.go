@@ -3718,3 +3718,139 @@ func TestSchedulerSerialExecutionLeaveExpiredToInactive(t *testing.T) {
 		},
 	)
 }
+
+func TestSchedulerSerialExecutionDuringError(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.executionTimeout = 3 * time.Second
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Serial, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
+			{delay: 7, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 7, kind: Serial, priority: 0, handler: blownUpHandler(3), errorHandler: blownUpHandler(1)},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	leftErrorAt := []time.Duration{}
+	options.onLeaveError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(3 * time.Second)
+		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esP, _esP},
+			},
+			{
+				at:         4,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esP, _esP},
+			},
+			{
+				at:         5,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP, _esP},
+			},
+			{
+				at:         6,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP, _esP},
+			},
+			{
+				at:         7,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esS, _esS},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esR},
+			},
+			{
+				at:         9,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esR},
+			},
+			{
+				at:         10,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+			},
+			{
+				at:         11,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+			},
+			{
+				at:         12,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+			{
+				at:         13,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+			{
+				at:         14,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+			{
+				at:         15,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 1 * time.Second,
+			2: 8 * time.Second,
+			3: 8 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			2: 9 * time.Second,
+			3: 11 * time.Second,
+		},
+	)
+
+	expectedLeftError := []time.Duration{8 * time.Second, 15 * time.Second}
+	if !reflect.DeepEqual(leftErrorAt, expectedLeftError) {
+		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftError, leftErrorAt)
+	}
+
+	if scheduler.Err != nil {
+		t.Fatalf("Scheduler should have finished with no error, but got \"%v\"", scheduler.Err)
+	}
+}
