@@ -30,18 +30,23 @@ const (
 
 type ExecutionEvent uint64
 
+const callbackEventsMask = 0x100
+const parallelFinishMask = 0x200
+
 const (
-	PreparedEvent ExecutionEvent = iota
-	ScheduledEvent
-	FinishedEvent
+	ScheduledEvent ExecutionEvent = iota
 	WakedEvent
-	ClosingEvent
-	ErrorEvent
-	OnErrorFinishedEvent
-	OnCrashFinishedEvent
-	RefreshEvent
 	CrashedEvent
 	ShutdownEvent
+
+	PreparedEvent ExecutionEvent = callbackEventsMask | iota
+	RefreshEvent
+	ClosingEvent
+	OnErrorFinishedEvent
+	OnCrashFinishedEvent
+
+	FinishedEvent ExecutionEvent = parallelFinishMask | iota
+	ErrorEvent
 )
 
 type schedulerInterface interface {
@@ -187,13 +192,13 @@ func (scheduler *Scheduler) eventLoop() {
 }
 
 func (scheduler *Scheduler) closedCallback(event ExecutionEvent) {
-	if event == RefreshEvent || event == PreparedEvent || event == ClosingEvent || event == OnErrorFinishedEvent || event == OnCrashFinishedEvent {
+	if (event & callbackEventsMask) == callbackEventsMask {
 		scheduler.callbackRunning = false
 	}
 }
 
 func (scheduler *Scheduler) finishedExecutions(event ExecutionEvent) {
-	if event == FinishedEvent || event == ErrorEvent {
+	if (event & parallelFinishMask) == parallelFinishMask {
 		scheduler.parallelRunning -= 1
 	}
 }
