@@ -52,8 +52,8 @@ func TestExecutionCalling(t *testing.T) {
 		t.Fatalf("no new goroutines should be spawned, but %d we have", runtime.NumGoroutine()-goroutineCount)
 	}
 
-	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{FinishedEvent}) {
-		t.Fatalf("scheduler should have received only a single FinishedEvent")
+	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{FinishedParallelEvent}) {
+		t.Fatalf("scheduler should have received only a single FinishedParallelEvent")
 	}
 
 	if execution.call(scheduler) {
@@ -102,8 +102,8 @@ func TestExecutionExpiration(t *testing.T) {
 		t.Fatalf("execution status should be expired, but got %q", executionStatusToString(execution.Status))
 	}
 
-	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{ErrorEvent}) {
-		t.Fatalf("scheduler should have received only a single ErrorEvent but got %v", scheduler.events)
+	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{ErrorParallelEvent}) {
+		t.Fatalf("scheduler should have received only a single ErrorParallelEvent but got %v", scheduler.events)
 	}
 
 	if execution.call(scheduler) {
@@ -175,8 +175,8 @@ func TestExecutionCallingBeforeExpire(t *testing.T) {
 		t.Fatalf("no new goroutines should be spawned, but %d we have", runtime.NumGoroutine()-goroutineCount)
 	}
 
-	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{FinishedEvent}) {
-		t.Fatalf("scheduler should have received only a single FinishedEvent")
+	if !reflect.DeepEqual(scheduler.events, []ExecutionEvent{FinishedParallelEvent}) {
+		t.Fatalf("scheduler should have received only a single FinishedParallelEvent")
 	}
 
 	if execution.call(scheduler) {

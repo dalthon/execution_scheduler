@@ -31,14 +31,18 @@ func schedulerEventToString(event ExecutionEvent) string {
 		return "Prepared"
 	case ScheduledEvent:
 		return "Scheduled"
-	case FinishedEvent:
-		return "Finished"
+	case FinishedParallelEvent:
+		return "FinishedParallel"
+	case FinishedSerialEvent:
+		return "FinishedSerial"
 	case WakedEvent:
 		return "Waked"
 	case ClosingEvent:
 		return "Closing"
-	case ErrorEvent:
+	case ErrorParallelEvent:
 		return "Error"
+	case ErrorSerialEvent:
+		return "ErrorSerial"
 	case OnErrorFinishedEvent:
 		return "OnErrorFinished"
 	case OnCrashFinishedEvent:

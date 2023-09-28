@@ -101,9 +101,18 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 }
 
 func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error) {
+	if execution.kind == Parallel {
+		if err == nil {
+			scheduler.signal(FinishedParallelEvent)
+		} else {
+			scheduler.signal(ErrorParallelEvent)
+		}
+		return
+	}
+
 	if err == nil {
-		scheduler.signal(FinishedEvent)
+		scheduler.signal(FinishedSerialEvent)
 	} else {
-		scheduler.signal(ErrorEvent)
+		scheduler.signal(ErrorSerialEvent)
 	}
 }
