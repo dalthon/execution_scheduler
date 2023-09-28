@@ -48,6 +48,7 @@ func (execution *Execution) call(scheduler schedulerInterface) bool {
 			execution.timer = nil
 		}
 
+		scheduler.beforeExecutionCall(execution)
 		go execution.run(scheduler)
 		return true
 	}
@@ -62,22 +63,17 @@ func (execution *Execution) run(scheduler schedulerInterface) {
 		err = execution.errorHandler(err)
 	}
 
-	execution.notifyScheduler(scheduler, err)
-
 	scheduler.getLock().Lock()
 	execution.Status = ExecutionFinished
 	scheduler.getLock().Unlock()
+
+	execution.notifyScheduler(scheduler, err, true)
 }
 
-func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration, beforeExpire func()) {
+func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration) {
 	execution.timer = scheduler.getClock().AfterFunc(
 		duration,
-		func() {
-			if beforeExpire != nil {
-				beforeExpire()
-			}
-			execution.expire(scheduler, NewTimeoutError())
-		},
+		func() { execution.expire(scheduler, NewTimeoutError()) },
 	)
 }
 
@@ -90,9 +86,10 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 		execution.timer = nil
 		scheduler.remove(execution)
 
+		scheduler.beforeExpireCall(execution)
 		go func() {
 			err := execution.errorHandler(err)
-			execution.notifyScheduler(scheduler, err)
+			execution.notifyScheduler(scheduler, err, false)
 		}()
 		return true
 	}
@@ -100,7 +97,7 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 	return false
 }
 
-func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error) {
+func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error, called bool) {
 	if execution.kind == Parallel {
 		if err == nil {
 			scheduler.signal(FinishedParallelEvent)
@@ -112,7 +109,12 @@ func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err er
 
 	if err == nil {
 		scheduler.signal(FinishedSerialEvent)
-	} else {
+		return
+	}
+
+	if called {
 		scheduler.signal(ErrorSerialEvent)
+	} else {
+		scheduler.signal(ExpiredSerialEvent)
 	}
 }

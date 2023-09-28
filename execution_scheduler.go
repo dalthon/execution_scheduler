@@ -51,9 +51,12 @@ const (
 
 	FinishedSerialEvent ExecutionEvent = serialFinishMask | iota
 	ErrorSerialEvent
+	ExpiredSerialEvent
 )
 
 type schedulerInterface interface {
+	beforeExecutionCall(execution *Execution)
+	beforeExpireCall(execution *Execution)
 	getLock() *sync.Mutex
 	getClock() clockwork.Clock
 	signal(event ExecutionEvent)
@@ -78,7 +81,8 @@ type Scheduler struct {
 	options         *SchedulerOptions
 	lock            sync.Mutex
 	parallelRunning uint32
-	serialRunning   *Execution
+	serialRunning   uint32
+	currentSerial   *Execution
 	parallelQueue   *ExecutionQueue
 	serialQueue     *ExecutionQueue
 	events          chan ExecutionEvent
@@ -93,7 +97,8 @@ func NewScheduler(options *SchedulerOptions, waitGroup *sync.WaitGroup) *Schedul
 		Status:          PendingStatus,
 		options:         options,
 		parallelRunning: 0,
-		serialRunning:   nil,
+		serialRunning:   0,
+		currentSerial:   nil,
 		parallelQueue:   NewExecutionQueue(),
 		serialQueue:     NewExecutionQueue(),
 		events:          make(chan ExecutionEvent, 16),
@@ -122,18 +127,6 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 			kind,
 			priority,
 		)
-
-		if scheduler.options.executionTimeout != time.Duration(0) {
-			execution.setExpiration(
-				scheduler,
-				scheduler.options.executionTimeout,
-				func() {
-					scheduler.lock.Lock()
-					scheduler.parallelRunning += 1
-					scheduler.lock.Unlock()
-				},
-			)
-		}
 	} else {
 		execution = scheduler.serialQueue.Push(
 			handler,
@@ -141,18 +134,10 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 			kind,
 			priority,
 		)
+	}
 
-		if scheduler.options.executionTimeout != time.Duration(0) {
-			execution.setExpiration(
-				scheduler,
-				scheduler.options.executionTimeout,
-				func() {
-					scheduler.lock.Lock()
-					scheduler.serialRunning = execution
-					scheduler.lock.Unlock()
-				},
-			)
-		}
+	if scheduler.options.executionTimeout != time.Duration(0) {
+		execution.setExpiration(scheduler, scheduler.options.executionTimeout)
 	}
 	scheduler.signal(ScheduledEvent)
 
@@ -209,7 +194,10 @@ func (scheduler *Scheduler) finishedExecutions(event ExecutionEvent) {
 	}
 
 	if (event & serialFinishMask) == serialFinishMask {
-		scheduler.serialRunning = nil
+		if event != ExpiredSerialEvent {
+			scheduler.currentSerial = nil
+		}
+		scheduler.serialRunning -= 1
 	}
 }
 
@@ -243,6 +231,8 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 			scheduler.setStatus(InactiveStatus)
 		}
 	case ErrorSerialEvent:
+		scheduler.setStatus(ErrorStatus)
+	case ExpiredSerialEvent:
 		scheduler.setStatus(ErrorStatus)
 	case ShutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
@@ -305,6 +295,11 @@ func (scheduler *Scheduler) processEventOnError(event ExecutionEvent) {
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
+	case ExpiredSerialEvent:
+		if !scheduler.callbackRunning && !scheduler.isRunning() {
+			scheduler.runOnLeaveErrorCallback()
+		}
+
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
@@ -333,6 +328,10 @@ func (scheduler *Scheduler) processEventOnCrashed(event ExecutionEvent) {
 			scheduler.setStatus(ClosedStatus)
 		}
 	case ErrorSerialEvent:
+		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
+			scheduler.setStatus(ClosedStatus)
+		}
+	case ExpiredSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
@@ -388,13 +387,14 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 
 func (scheduler *Scheduler) execute() {
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
-		scheduler.parallelRunning += 1
 		go execution.call(scheduler)
 	}
 
-	for execution := scheduler.serialQueue.Pop(); execution != nil; execution = scheduler.serialQueue.Pop() {
-		scheduler.serialRunning = execution
-		go execution.call(scheduler)
+	if scheduler.currentSerial == nil {
+		execution := scheduler.serialQueue.Pop()
+		if execution != nil {
+			go execution.call(scheduler)
+		}
 	}
 }
 
@@ -402,14 +402,32 @@ func (scheduler *Scheduler) cancelExecutions() {
 	err := NewSchedulerCrashedError()
 
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
-		scheduler.parallelRunning += 1
 		go execution.expire(scheduler, err)
 	}
 
 	for execution := scheduler.serialQueue.Pop(); execution != nil; execution = scheduler.serialQueue.Pop() {
-		scheduler.serialRunning = execution
 		go execution.expire(scheduler, err)
 	}
+}
+
+func (scheduler *Scheduler) beforeExecutionCall(execution *Execution) {
+	if execution.kind == Parallel {
+		scheduler.parallelRunning += 1
+		return
+	}
+
+	scheduler.currentSerial = execution
+	scheduler.serialRunning += 1
+}
+
+func (scheduler *Scheduler) beforeExpireCall(execution *Execution) {
+	if execution.kind == Parallel {
+		scheduler.parallelRunning += 1
+		return
+	}
+
+	scheduler.currentSerial = execution
+	scheduler.serialRunning += 1
 }
 
 func (scheduler *Scheduler) getLock() *sync.Mutex {
@@ -433,7 +451,7 @@ func (scheduler *Scheduler) remove(execution *Execution) {
 }
 
 func (scheduler *Scheduler) isRunning() bool {
-	return scheduler.parallelRunning > 0 || scheduler.serialRunning != nil
+	return scheduler.parallelRunning > 0 || scheduler.serialRunning > 0
 }
 
 func (scheduler *Scheduler) isScheduled() bool {

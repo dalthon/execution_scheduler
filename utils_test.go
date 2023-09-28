@@ -82,15 +82,19 @@ func schedulerStatusToString(status SchedulerStatus) string {
 }
 
 type mockedScheduler struct {
-	lock              sync.Mutex
-	events            []ExecutionEvent
-	removedExecutions []*Execution
-	clock             clockwork.Clock
+	lock                     sync.Mutex
+	events                   []ExecutionEvent
+	removedExecutions        []*Execution
+	clock                    clockwork.Clock
+	beforeExecutionCallCount uint64
+	beforeExpireCallCount    uint64
 }
 
 func newMockedScheduler() *mockedScheduler {
 	return &mockedScheduler{
-		clock: clockwork.NewFakeClock(),
+		clock:                    clockwork.NewFakeClock(),
+		beforeExecutionCallCount: 0,
+		beforeExpireCallCount:    0,
 	}
 }
 
@@ -101,6 +105,14 @@ func (scheduler *mockedScheduler) Schedule(handler func() error, errorHandler fu
 		kind,
 		priority,
 	)
+}
+
+func (scheduler *mockedScheduler) beforeExecutionCall(execution *Execution) {
+	scheduler.beforeExecutionCallCount += 1
+}
+
+func (scheduler *mockedScheduler) beforeExpireCall(execution *Execution) {
+	scheduler.beforeExpireCallCount += 1
 }
 
 func (scheduler *mockedScheduler) getLock() *sync.Mutex {
