@@ -4039,7 +4039,96 @@ func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 
 	expectedErrorAt := []time.Duration{4 * time.Second}
 	if !reflect.DeepEqual(errorAt, expectedErrorAt) {
-		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
+		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Boom!" {
+		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got \"%v\"", scheduler.Err)
+	}
+}
+
+func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.executionTimeout = 3 * time.Second
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Serial, priority: 0, handler: blownUpHandler(3), errorHandler: blownUpHandler(2)},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	errorAt := []time.Duration{}
+	options.onError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
+
+		return errors.New("Boom!")
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+			},
+			{
+				at:         4,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         5,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esR},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         6,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+				error:      errors.New("Boom!"),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 1 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 4 * time.Second,
+		},
+	)
+
+	expectedErrorAt := []time.Duration{4 * time.Second}
+	if !reflect.DeepEqual(errorAt, expectedErrorAt) {
+		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
 	}
 
 	if scheduler.Err == nil || scheduler.Err.Error() != "Boom!" {
