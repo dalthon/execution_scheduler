@@ -3926,7 +3926,7 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 				at:         33,
 				status:     ActiveStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
-			},
+			}, // TODO: It should be nice to go to ClosedStatus (or InactiveStatus)
 		},
 		map[int]time.Duration{
 			0: 1 * time.Second,
