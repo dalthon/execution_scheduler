@@ -4139,3 +4139,209 @@ func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got \"%v\"", scheduler.Err)
 	}
 }
+
+func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.executionTimeout = 2 * time.Second
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 0, kind: Serial, priority: 0, handler: blownUpHandler(4), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDelayedHandler(5, nil)},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	errorAt := []time.Duration{}
+	options.onError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
+
+		return errors.New("Boom!")
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esR, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esS},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esS},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX},
+			},
+			{
+				at:         4,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         5,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         6,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         7,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         8,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 0 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 4 * time.Second,
+			2: 3 * time.Second,
+		},
+	)
+
+	expectedErrorAt := []time.Duration{4 * time.Second}
+	if !reflect.DeepEqual(errorAt, expectedErrorAt) {
+		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Boom!" {
+		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got \"%v\"", scheduler.Err)
+	}
+}
+
+func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.executionTimeout = 2 * time.Second
+	blownHandlerCount := 0
+	blownUpHandler := func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
+	}
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 0, kind: Serial, priority: 0, handler: blownUpHandler(4), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: blownUpHandler(5)},
+		},
+	)
+	startedAt := scheduler.clock.Now()
+
+	errorAt := []time.Duration{}
+	options.onError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
+
+		return errors.New("Boom!")
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esP, _esR, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esS},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esR, _esS},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX},
+			},
+			{
+				at:         4,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         5,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         6,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         7,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+			{
+				at:         8,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+				error:      errors.New("Boom!"),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 0 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 4 * time.Second,
+			2: 3 * time.Second,
+		},
+	)
+
+	expectedErrorAt := []time.Duration{4 * time.Second}
+	if !reflect.DeepEqual(errorAt, expectedErrorAt) {
+		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
+	}
+
+	if scheduler.Err == nil || scheduler.Err.Error() != "Boom!" {
+		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got \"%v\"", scheduler.Err)
+	}
+}
