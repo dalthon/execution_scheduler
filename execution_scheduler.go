@@ -572,10 +572,6 @@ func (scheduler *Scheduler) runOnClosingCallback() {
 }
 
 func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent) {
-	if scheduler.Err != nil {
-		return
-	}
-
 	if callback == nil {
 		scheduler.signal(event)
 		return
@@ -585,10 +581,6 @@ func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) er
 }
 
 func (scheduler *Scheduler) runAsyncCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent) {
-	if scheduler.Err != nil {
-		return
-	}
-
 	err := callback(scheduler)
 	if err == nil {
 		scheduler.signal(event)
