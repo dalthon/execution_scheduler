@@ -208,7 +208,11 @@ func (scheduler *Scheduler) finishedExecutions(event ExecutionEvent) {
 func (scheduler *Scheduler) processEventOnPending(event ExecutionEvent) {
 	switch event {
 	case PreparedEvent:
-		scheduler.setStatus(ActiveStatus)
+		if scheduler.isScheduled() || scheduler.isRunning() {
+			scheduler.setStatus(ActiveStatus)
+		} else {
+			scheduler.setStatus(InactiveStatus)
+		}
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:

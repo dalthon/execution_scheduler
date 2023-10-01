@@ -20,7 +20,7 @@ func TestSchedulerEmptyTimeline(t *testing.T) {
 
 	timeline.expects(
 		[]testTimelineExpectations{
-			{at: 0, status: ActiveStatus, executions: []testExecutionStatus{}},
+			{at: 0, status: ClosedStatus, executions: []testExecutionStatus{}},
 		},
 		map[int]time.Duration{},
 		map[int]time.Duration{},
@@ -28,41 +28,51 @@ func TestSchedulerEmptyTimeline(t *testing.T) {
 }
 
 func TestSchedulerMinimalSerialTimeline(t *testing.T) {
-	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 0, kind: Serial, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 1, kind: Serial, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
 		},
 	)
 
 	timeline.expects(
 		[]testTimelineExpectations{
-			{at: 0, status: ActiveStatus, executions: []testExecutionStatus{_esR}},
-			{at: 1, status: ClosedStatus, executions: []testExecutionStatus{_esF}},
+			{at: 0, status: InactiveStatus, executions: []testExecutionStatus{_esP}},
+			{at: 1, status: ActiveStatus, executions: []testExecutionStatus{_esR}},
+			{at: 2, status: InactiveStatus, executions: []testExecutionStatus{_esF}},
+			{at: 3, status: InactiveStatus, executions: []testExecutionStatus{_esF}},
+			{at: 4, status: ClosedStatus, executions: []testExecutionStatus{_esF}},
 		},
-		map[int]time.Duration{0: 0 * time.Second},
+		map[int]time.Duration{0: 1 * time.Second},
 		map[int]time.Duration{},
 	)
 }
 
 func TestSchedulerMinimalParallelTimeline(t *testing.T) {
-	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 0, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
+			{delay: 1, kind: Parallel, priority: 0, handler: testDelayedHandler(1, nil), errorHandler: testDelayedHandler(1, nil)},
 		},
 	)
 
 	timeline.expects(
 		[]testTimelineExpectations{
-			{at: 0, status: ActiveStatus, executions: []testExecutionStatus{_esR}},
-			{at: 1, status: ClosedStatus, executions: []testExecutionStatus{_esF}},
+			{at: 0, status: InactiveStatus, executions: []testExecutionStatus{_esP}},
+			{at: 1, status: ActiveStatus, executions: []testExecutionStatus{_esR}},
+			{at: 2, status: InactiveStatus, executions: []testExecutionStatus{_esF}},
+			{at: 3, status: InactiveStatus, executions: []testExecutionStatus{_esF}},
+			{at: 4, status: ClosedStatus, executions: []testExecutionStatus{_esF}},
 		},
-		map[int]time.Duration{0: 0 * time.Second},
+		map[int]time.Duration{0: 1 * time.Second},
 		map[int]time.Duration{},
 	)
 }
