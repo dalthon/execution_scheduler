@@ -2440,13 +2440,14 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 
 func TestSchedulerFromClosingToCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
 			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
-			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -2473,7 +2474,7 @@ func TestSchedulerFromClosingToCrashed(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
@@ -2483,47 +2484,67 @@ func TestSchedulerFromClosingToCrashed(t *testing.T) {
 			},
 			{
 				at:         2,
-				status:     ClosingStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esP},
 			},
 			{
 				at:         3,
-				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esF, _esS},
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esP},
 			},
 			{
 				at:         4,
 				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esF, _esS},
+				executions: []testExecutionStatus{_esF, _esP},
 			},
 			{
 				at:         5,
-				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esF, _esR},
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esS},
 			},
 			{
 				at:         6,
 				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esF, _esF},
+				executions: []testExecutionStatus{_esF, _esS},
 			},
 			{
 				at:         7,
-				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esF, _esF},
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR},
 			},
 			{
 				at:         8,
-				status:     ClosingStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esF},
 			},
 			{
 				at:         9,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         10,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         11,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         12,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF, _esF},
+			},
+			{
+				at:         13,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{_esF, _esF},
 				error:      errors.New("Boom!"),
 			},
 			{
-				at:         10,
+				at:         14,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF},
 				error:      errors.New("Boom!"),
@@ -2531,17 +2552,17 @@ func TestSchedulerFromClosingToCrashed(t *testing.T) {
 		},
 		map[int]time.Duration{
 			0: 1 * time.Second,
-			1: 5 * time.Second,
+			1: 7 * time.Second,
 		},
 		map[int]time.Duration{},
 	)
 
-	expectedClosingAt := []time.Duration{5 * time.Second, 9 * time.Second}
+	expectedClosingAt := []time.Duration{7 * time.Second, 13 * time.Second}
 	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
 		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
 	}
 
-	expectedCrashedAt := []time.Duration{10 * time.Second}
+	expectedCrashedAt := []time.Duration{14 * time.Second}
 	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
 		t.Fatalf("OnCrashed should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
 	}
