@@ -949,6 +949,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -990,7 +991,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T)
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
@@ -1070,6 +1071,16 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T)
 			},
 			{
 				at:         16,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         17,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         18,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF},
 			},
