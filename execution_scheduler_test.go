@@ -2036,12 +2036,12 @@ func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 
 func TestSchedulerCrashedFromClosing(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
@@ -2066,55 +2066,53 @@ func TestSchedulerCrashedFromClosing(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esP, _esP, _esP},
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
 				at:         1,
-				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esP, _esP},
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
 				at:         2,
 				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esF, _esP, _esP},
+				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
 				at:         3,
 				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esF, _esS, _esP},
+				executions: []testExecutionStatus{_esS, _esP},
 			},
 			{
 				at:         4,
 				status:     CrashedStatus,
-				executions: []testExecutionStatus{_esF, _esX, _esP},
+				executions: []testExecutionStatus{_esX, _esP},
 				error:      errors.New("Boom!"),
 			},
 			{
 				at:         5,
 				status:     CrashedStatus,
-				executions: []testExecutionStatus{_esF, _esX, _esX},
+				executions: []testExecutionStatus{_esX, _esX},
 				error:      errors.New("Boom!"),
 			},
 			{
 				at:         6,
 				status:     CrashedStatus,
-				executions: []testExecutionStatus{_esF, _esX, _esX},
+				executions: []testExecutionStatus{_esX, _esX},
 				error:      errors.New("Boom!"),
 			},
 			{
 				at:         7,
 				status:     ClosedStatus,
-				executions: []testExecutionStatus{_esF, _esX, _esX},
+				executions: []testExecutionStatus{_esX, _esX},
 				error:      errors.New("Boom!"),
 			},
 		},
+		map[int]time.Duration{},
 		map[int]time.Duration{
-			0: 1 * time.Second,
-		},
-		map[int]time.Duration{
-			1: 4 * time.Second,
-			2: 5 * time.Second,
+			0: 4 * time.Second,
+			1: 5 * time.Second,
 		},
 	)
 
