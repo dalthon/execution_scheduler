@@ -282,6 +282,7 @@ func TestSchedulerTimeout(t *testing.T) {
 
 func TestSchedulerAllPendingTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
 	blownUpHandler := func() testDelayedHandlerParams {
@@ -295,6 +296,7 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 		[]testTimelineParams{
 			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
 			{delay: 6, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 13, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -304,7 +306,7 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 		scheduler.clock.Sleep(2 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
-		if len(preparedAt) == 3 {
+		if len(preparedAt) == 4 {
 			return errors.New("Its enough!")
 		}
 
@@ -328,92 +330,124 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 			{
 				at:         0,
 				status:     PendingStatus,
-				executions: []testExecutionStatus{_esP, _esP},
+				executions: []testExecutionStatus{_esP, _esP, _esP},
 			},
 			{
 				at:         1,
 				status:     PendingStatus,
-				executions: []testExecutionStatus{_esS, _esP},
+				executions: []testExecutionStatus{_esS, _esP, _esP},
 			},
 			{
 				at:         2,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esP},
+				executions: []testExecutionStatus{_esR, _esP, _esP},
 			},
 			{
 				at:         3,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esR, _esP},
+				executions: []testExecutionStatus{_esR, _esP, _esP},
 			},
 			{
 				at:         4,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esP},
+				executions: []testExecutionStatus{_esF, _esP, _esP},
 			},
 			{
 				at:         5,
 				status:     PendingStatus,
-				executions: []testExecutionStatus{_esF, _esP},
+				executions: []testExecutionStatus{_esF, _esP, _esP},
 			},
 			{
 				at:         6,
 				status:     PendingStatus,
-				executions: []testExecutionStatus{_esF, _esS},
+				executions: []testExecutionStatus{_esF, _esS, _esP},
 			},
 			{
 				at:         7,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esF, _esR},
+				executions: []testExecutionStatus{_esF, _esR, _esP},
 			},
 			{
 				at:         8,
 				status:     ActiveStatus,
-				executions: []testExecutionStatus{_esF, _esR},
+				executions: []testExecutionStatus{_esF, _esR, _esP},
 			},
 			{
 				at:         9,
 				status:     ErrorStatus,
-				executions: []testExecutionStatus{_esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esP},
 			},
 			{
 				at:         10,
 				status:     PendingStatus,
-				executions: []testExecutionStatus{_esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esP},
 			},
 			{
 				at:         11,
 				status:     PendingStatus,
-				executions: []testExecutionStatus{_esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esP},
 			},
 			{
 				at:         12,
-				status:     CrashedStatus,
-				executions: []testExecutionStatus{_esF, _esF},
-				error:      errors.New("Its enough!"),
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP},
 			},
 			{
 				at:         13,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR},
+			},
+			{
+				at:         14,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR},
+			},
+			{
+				at:         15,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         16,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         17,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         18,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+				error:      errors.New("Its enough!"),
+			},
+			{
+				at:         19,
 				status:     ClosedStatus,
-				executions: []testExecutionStatus{_esF, _esF},
+				executions: []testExecutionStatus{_esF, _esF, _esF},
 				error:      errors.New("Its enough!"),
 			},
 		},
 		map[int]time.Duration{
 			0: 2 * time.Second,
 			1: 7 * time.Second,
+			2: 13 * time.Second,
 		},
 		map[int]time.Duration{
 			0: 3 * time.Second,
 			1: 8 * time.Second,
+			2: 14 * time.Second,
 		},
 	)
 
-	expectedPreparedAt := []time.Duration{2 * time.Second, 7 * time.Second, 12 * time.Second}
+	expectedPreparedAt := []time.Duration{2 * time.Second, 7 * time.Second, 12 * time.Second, 18 * time.Second}
 	if !reflect.DeepEqual(preparedAt, expectedPreparedAt) {
 		t.Fatalf("OnPrepare should have finished at %v, but was finished at %v", expectedPreparedAt, preparedAt)
 	}
 
-	expectedLeftErrorAt := []time.Duration{5 * time.Second, 10 * time.Second}
+	expectedLeftErrorAt := []time.Duration{5 * time.Second, 10 * time.Second, 16 * time.Second}
 	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
 		t.Fatalf("OnLeftError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
 	}
