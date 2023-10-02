@@ -884,7 +884,9 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 }
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
-	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
 		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
@@ -904,7 +906,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
