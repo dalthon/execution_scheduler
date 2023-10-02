@@ -2317,7 +2317,7 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP, _esP, _esP, _esP},
 			},
 			{
@@ -2347,12 +2347,12 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 			},
 			{
 				at:         6,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esP, _esP},
 			},
 			{
 				at:         7,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esP, _esP},
 			},
 			{
