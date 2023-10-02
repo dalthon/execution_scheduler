@@ -2760,6 +2760,7 @@ func TestSchedulerWaitForWaitGroup(t *testing.T) {
 
 func TestSchedulerShutdownTwice(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2777,7 +2778,7 @@ func TestSchedulerShutdownTwice(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP},
 			},
 			{
