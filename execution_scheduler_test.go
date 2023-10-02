@@ -79,6 +79,7 @@ func TestSchedulerMinimalParallelTimeline(t *testing.T) {
 
 func TestSchedulerTimeout(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
@@ -95,7 +96,7 @@ func TestSchedulerTimeout(t *testing.T) {
 			{delay: 5, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
 			{delay: 8, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 16, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
-			{delay: 18, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 20, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -148,7 +149,7 @@ func TestSchedulerTimeout(t *testing.T) {
 			},
 			{
 				at:         4,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esX, _esP, _esP, _esP, _esP},
 			},
 			{
@@ -203,7 +204,7 @@ func TestSchedulerTimeout(t *testing.T) {
 			},
 			{
 				at:         15,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esX, _esF, _esX, _esP, _esP},
 			},
 			{
@@ -213,26 +214,36 @@ func TestSchedulerTimeout(t *testing.T) {
 			},
 			{
 				at:         17,
-				status:     ClosingStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esP},
 			},
 			{
 				at:         18,
-				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esS},
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esP},
 			},
 			{
 				at:         19,
 				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esS},
+				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esP},
 			},
 			{
 				at:         20,
 				status:     ClosingStatus,
-				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esX},
+				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esS},
 			},
 			{
 				at:         21,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esS},
+			},
+			{
+				at:         22,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esX},
+			},
+			{
+				at:         23,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esX, _esF, _esX, _esF, _esX},
 			},
@@ -245,7 +256,7 @@ func TestSchedulerTimeout(t *testing.T) {
 			0: 3 * time.Second,
 			1: 6 * time.Second,
 			2: 10 * time.Second,
-			4: 20 * time.Second,
+			4: 22 * time.Second,
 		},
 	)
 
@@ -259,7 +270,7 @@ func TestSchedulerTimeout(t *testing.T) {
 		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
 	}
 
-	expectedClosingAt := []time.Duration{21 * time.Second}
+	expectedClosingAt := []time.Duration{23 * time.Second}
 	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
 		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
 	}
