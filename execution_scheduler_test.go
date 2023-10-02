@@ -1787,6 +1787,7 @@ func TestSchedulerCrashedWaitingRunning(t *testing.T) {
 
 func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -1824,7 +1825,7 @@ func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
 			},
 			{
@@ -1908,6 +1909,7 @@ func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 
 func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -1944,7 +1946,7 @@ func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP, _esP},
 			},
 			{
