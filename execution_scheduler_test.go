@@ -2201,13 +2201,14 @@ func TestSchedulerAllInactiveTransitions(t *testing.T) {
 
 func TestSchedulerClosed(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
 			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
-			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -2221,7 +2222,7 @@ func TestSchedulerClosed(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
@@ -2231,16 +2232,26 @@ func TestSchedulerClosed(t *testing.T) {
 			},
 			{
 				at:         2,
-				status:     ClosedStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esP},
 			},
 			{
 				at:         3,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         4,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esP},
+			},
+			{
+				at:         5,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esX},
 			},
 			{
-				at:         4,
+				at:         6,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esX},
 			},
@@ -2249,11 +2260,11 @@ func TestSchedulerClosed(t *testing.T) {
 			0: 1 * time.Second,
 		},
 		map[int]time.Duration{
-			1: 3 * time.Second,
+			1: 5 * time.Second,
 		},
 	)
 
-	expectedClosedAt := []time.Duration{2 * time.Second}
+	expectedClosedAt := []time.Duration{4 * time.Second}
 	if !reflect.DeepEqual(closedAt, expectedClosedAt) {
 		t.Fatalf("OnClose should have finished at %v, but was finished at %v", expectedClosedAt, closedAt)
 	}
