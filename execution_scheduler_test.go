@@ -2687,6 +2687,7 @@ func TestSchedulerFromClosingToClosed(t *testing.T) {
 func TestSchedulerWaitForWaitGroup(t *testing.T) {
 	var waitGroup sync.WaitGroup
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, &waitGroup)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2707,7 +2708,7 @@ func TestSchedulerWaitForWaitGroup(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP},
 			},
 			{
@@ -2727,6 +2728,16 @@ func TestSchedulerWaitForWaitGroup(t *testing.T) {
 			},
 			{
 				at:         4,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         5,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         6,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF},
 			},
@@ -2737,7 +2748,7 @@ func TestSchedulerWaitForWaitGroup(t *testing.T) {
 		map[int]time.Duration{},
 	)
 
-	expectedFinishedAt := 4 * time.Second
+	expectedFinishedAt := 6 * time.Second
 	if expectedFinishedAt != finishedAt {
 		t.Fatalf("Scheduler should have finished at %v, but did at %v", expectedFinishedAt, finishedAt)
 	}
