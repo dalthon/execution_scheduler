@@ -41,6 +41,9 @@ make-%: ## Runs make tasks
 cover: make-cover ## Runs tests with cover and output its result
 .PHONY: cover
 
+stop-%: ## Stops container
+	docker rm -f $(IMAGE_NAME)-$*
+
 make-cover:
 	@mkdir -p tmp
 	go test -coverprofile=tmp/cover.out
