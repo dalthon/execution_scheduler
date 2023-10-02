@@ -2148,7 +2148,7 @@ func TestSchedulerAllInactiveTransitions(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
