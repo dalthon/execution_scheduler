@@ -719,6 +719,7 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 
 func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
 	blownUpHandler := func() testDelayedHandlerParams {
@@ -760,7 +761,7 @@ func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
