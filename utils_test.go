@@ -1,6 +1,8 @@
 package execution_scheduler
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"sync"
@@ -216,6 +218,15 @@ func testDelayedHandler(delay int, result error) testDelayedHandlerParams {
 	return testDelayedHandlerParams{
 		delay:  delay,
 		result: result,
+	}
+}
+
+func testErrorHandlerBuilder() func(int) testDelayedHandlerParams {
+	blownHandlerCount := 0
+	return func(delay int) testDelayedHandlerParams {
+		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
+		blownHandlerCount++
+		return handler
 	}
 }
 

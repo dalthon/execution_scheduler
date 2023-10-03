@@ -82,18 +82,13 @@ func TestSchedulerTimeout(t *testing.T) {
 	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func() testDelayedHandlerParams {
-		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
 			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
-			{delay: 5, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 5, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 8, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 16, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 20, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
@@ -284,19 +279,14 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func() testDelayedHandlerParams {
-		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
-			{delay: 6, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
-			{delay: 13, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 6, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 13, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -460,19 +450,14 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 func TestSchedulerSerialExpiration(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.executionTimeout = 3 * time.Second
-	blownHandlerCount := 0
-	blownUpHandler := func() testDelayedHandlerParams {
-		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
 			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDelayedHandler(1, errors.New("Boom!"))},
-			{delay: 4, kind: Serial, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 4, kind: Serial, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 9, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDelayedHandler(0, nil)},
 		},
 	)
@@ -587,18 +572,13 @@ func TestSchedulerSerialExpiration(t *testing.T) {
 func TestSchedulerAllErrorTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func() testDelayedHandlerParams {
-		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
-			{delay: 6, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 6, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -721,18 +701,13 @@ func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func() testDelayedHandlerParams {
-		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
-			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -821,18 +796,13 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDelayedHandler(1, nil)},
 		},
 	)
@@ -887,18 +857,13 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: errorHandler(2), errorHandler: errorHandler(1)},
 		},
 	)
 
@@ -951,22 +916,17 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T)
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: testDelayedHandler(1, nil)},
-			{delay: 4, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 4, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 5, kind: Parallel, priority: 0, handler: testDelayedHandler(5, nil), errorHandler: testDelayedHandler(1, nil)},
-			{delay: 10, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: blownUpHandler(1)},
-			{delay: 13, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: blownUpHandler(1)},
+			{delay: 10, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: errorHandler(1)},
+			{delay: 13, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: errorHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -1114,22 +1074,17 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *te
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 4, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 5, kind: Parallel, priority: 0, handler: blownUpHandler(4), errorHandler: blownUpHandler(1)},
-			{delay: 10, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: blownUpHandler(1)},
-			{delay: 13, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 4, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 5, kind: Parallel, priority: 0, handler: errorHandler(4), errorHandler: errorHandler(1)},
+			{delay: 10, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: errorHandler(1)},
+			{delay: 13, kind: Parallel, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: errorHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -1279,17 +1234,12 @@ func TestSchedulerCrashedWithoutLeaveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func() testDelayedHandlerParams {
-		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -1458,18 +1408,13 @@ func TestSchedulerCrashedFromError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 3, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 3, kind: Parallel, priority: 0, handler: errorHandler(2), errorHandler: errorHandler(2)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -1562,20 +1507,15 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 3, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
-			{delay: 4, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 3, kind: Parallel, priority: 0, handler: errorHandler(2), errorHandler: errorHandler(2)},
+			{delay: 4, kind: Parallel, priority: 0, handler: errorHandler(2), errorHandler: errorHandler(2)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -1678,17 +1618,12 @@ func TestSchedulerCrashedWaitingRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(6, nil), errorHandler: testDummyHandler()},
 		},
 	)
@@ -1789,20 +1724,15 @@ func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 2, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 3, kind: Parallel, priority: 0, handler: blownUpHandler(5), errorHandler: blownUpHandler(1)},
-			{delay: 4, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 2, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 3, kind: Parallel, priority: 0, handler: errorHandler(5), errorHandler: errorHandler(1)},
+			{delay: 4, kind: Parallel, priority: 0, handler: errorHandler(2), errorHandler: errorHandler(2)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -1911,17 +1841,12 @@ func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(2), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(2), errorHandler: errorHandler(2)},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(7, nil), errorHandler: testDummyHandler()},
 			{delay: 9, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
@@ -2278,17 +2203,12 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func() testDelayedHandlerParams {
-		handler := testDelayedHandler(1, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(), errorHandler: blownUpHandler()},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(3, nil), errorHandler: testDummyHandler()},
 			{delay: 8, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
@@ -3114,17 +3034,12 @@ func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
 			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
@@ -3209,17 +3124,12 @@ func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 4, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
@@ -3319,17 +3229,12 @@ func TestSchedulerShutdownOnErrorWhileRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 2, kind: Parallel, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
 			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 		},
@@ -3397,17 +3302,12 @@ func TestSchedulerShutdownOnErrorWhileCallbackRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 4, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 6, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
@@ -3497,17 +3397,12 @@ func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 4, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 5, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
 			{delay: 6, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
@@ -3956,27 +3851,22 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 3 * time.Second
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 1, kind: Serial, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
-			{delay: 7, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 7, kind: Serial, priority: 0, handler: blownUpHandler(3), errorHandler: blownUpHandler(1)},
-			{delay: 14, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 7, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 7, kind: Serial, priority: 0, handler: errorHandler(3), errorHandler: errorHandler(1)},
+			{delay: 14, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 14, kind: Serial, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
 			{delay: 16, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
-			{delay: 24, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 24, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 24, kind: Serial, priority: 0, handler: testDelayedHandler(4, nil), errorHandler: testDummyHandler()},
-			{delay: 25, kind: Serial, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 25, kind: Serial, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -4202,21 +4092,16 @@ func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 3 * time.Second
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
 			{delay: 0, kind: Serial, priority: 0, handler: testDelayedHandler(6, nil), errorHandler: testDummyHandler()},
 			{delay: 2, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
-			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: errorHandler(2)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -4295,19 +4180,14 @@ func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 3 * time.Second
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 1, kind: Serial, priority: 0, handler: blownUpHandler(3), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 1, kind: Serial, priority: 0, handler: errorHandler(3), errorHandler: errorHandler(2)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
@@ -4385,19 +4265,14 @@ func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 2 * time.Second
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 0, kind: Serial, priority: 0, handler: blownUpHandler(4), errorHandler: blownUpHandler(2)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 0, kind: Serial, priority: 0, handler: errorHandler(4), errorHandler: errorHandler(2)},
 			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: testDelayedHandler(5, nil)},
 		},
 	)
@@ -4489,20 +4364,15 @@ func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
 	options := defaultSchedulerOptions()
 	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 2 * time.Second
-	blownHandlerCount := 0
-	blownUpHandler := func(delay int) testDelayedHandlerParams {
-		handler := testDelayedHandler(delay, errors.New(fmt.Sprintf("Boom %d", blownHandlerCount)))
-		blownHandlerCount++
-		return handler
-	}
+	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
 		[]testTimelineParams{
-			{delay: 1, kind: Parallel, priority: 0, handler: blownUpHandler(1), errorHandler: blownUpHandler(1)},
-			{delay: 0, kind: Serial, priority: 0, handler: blownUpHandler(4), errorHandler: blownUpHandler(2)},
-			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: blownUpHandler(5)},
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+			{delay: 0, kind: Serial, priority: 0, handler: errorHandler(4), errorHandler: errorHandler(2)},
+			{delay: 1, kind: Serial, priority: 0, handler: testDummyHandler(), errorHandler: errorHandler(5)},
 		},
 	)
 	startedAt := scheduler.clock.Now()
