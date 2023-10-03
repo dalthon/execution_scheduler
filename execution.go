@@ -89,7 +89,10 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 
 	if execution.Status == ExecutionScheduled {
 		execution.Status = ExecutionExpired
-		execution.timer = nil
+		if execution.timer != nil {
+			execution.timer.Stop()
+			execution.timer = nil
+		}
 		scheduler.remove(execution)
 
 		scheduler.beforeExpireCall(execution)
