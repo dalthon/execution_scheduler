@@ -3112,6 +3112,7 @@ func TestSchedulerShutdownOnClosing(t *testing.T) {
 
 func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -3146,7 +3147,7 @@ func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
 			},
 			{
