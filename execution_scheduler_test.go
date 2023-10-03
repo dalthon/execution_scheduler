@@ -4383,6 +4383,7 @@ func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 
 func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 2 * time.Second
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -4486,6 +4487,7 @@ func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
 
 func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 2 * time.Second
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
