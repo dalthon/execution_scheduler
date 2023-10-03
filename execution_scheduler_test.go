@@ -3954,6 +3954,7 @@ func TestSchedulerSerialExecutionLeaveExpiredToInactive(t *testing.T) {
 
 func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 3 * time.Second
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -3992,7 +3993,7 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP, _esP},
 			},
 			{
@@ -4107,7 +4108,7 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 			},
 			{
 				at:         23,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esP, _esP, _esP},
 			},
 			{
@@ -4152,14 +4153,19 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 			},
 			{
 				at:         32,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
 			},
 			{
 				at:         33,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
-			}, // TODO: It should be nice to go to ClosedStatus (or InactiveStatus)
+			},
+			{
+				at:         34,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF, _esF, _esX, _esF, _esF, _esX},
+			},
 		},
 		map[int]time.Duration{
 			0: 1 * time.Second,
