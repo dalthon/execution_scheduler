@@ -1,6 +1,7 @@
 package execution_scheduler
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -408,12 +409,22 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 }
 
 func (scheduler *Scheduler) execute() {
-	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
+	if scheduler.currentSerial != nil && scheduler.currentSerial.kind == Critical {
+		return
+	}
+
+	priority := math.MinInt
+	topSerialExecution := scheduler.serialQueue.Top()
+	if scheduler.currentSerial == nil && topSerialExecution != nil && topSerialExecution.kind == Critical {
+		priority = topSerialExecution.priority
+	}
+
+	for execution := scheduler.parallelQueue.PopPriority(priority); execution != nil; execution = scheduler.parallelQueue.PopPriority(priority) {
 		go execution.call(scheduler)
 	}
 
-	if scheduler.currentSerial == nil {
-		execution := scheduler.serialQueue.Pop()
+	if scheduler.currentSerial == nil && topSerialExecution != nil && (topSerialExecution.kind != Critical || scheduler.parallelRunning == 0) {
+		execution := scheduler.serialQueue.PopPriority(priority)
 		if execution != nil {
 			go execution.call(scheduler)
 		}

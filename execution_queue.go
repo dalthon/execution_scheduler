@@ -30,17 +30,24 @@ func (queue *ExecutionQueue) Size() int {
 	return len(queue.queue)
 }
 
-// TODO: Think about having this function or not
-// func (queue *ExecutionQueue) Top() *Execution {
-//   if len(queue.queue) == 0 {
-//     return nil
-//   }
-//
-//   return queue.queue[0]
-// }
+func (queue *ExecutionQueue) Top() *Execution {
+	if len(queue.queue) == 0 {
+		return nil
+	}
+
+	return queue.queue[0]
+}
 
 func (queue *ExecutionQueue) Pop() *Execution {
 	if len(queue.queue) == 0 {
+		return nil
+	}
+
+	return (heap.Pop(&queue.queue).(*Execution))
+}
+
+func (queue *ExecutionQueue) PopPriority(priority int) *Execution {
+	if len(queue.queue) == 0 || queue.Top().priority < priority {
 		return nil
 	}
 

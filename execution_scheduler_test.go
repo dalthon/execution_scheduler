@@ -4458,3 +4458,186 @@ func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
 		t.Fatalf("Scheduler should have finished with error message \"Boom!\", but got \"%v\"", scheduler.Err)
 	}
 }
+
+func TestSchedulerCriticalExecutionsRunsSerially(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Critical, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+			{delay: 2, kind: Critical, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+			{delay: 3, kind: Critical, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+			{delay: 4, kind: Critical, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+		},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esS, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esS, _esP},
+			},
+			{
+				at:         4,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esS, _esS},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS},
+			},
+			{
+				at:         6,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS},
+			},
+			{
+				at:         7,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+			},
+			{
+				at:         9,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+			{
+				at:         10,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+			{
+				at:         11,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 3 * time.Second,
+			2: 5 * time.Second,
+			3: 7 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+}
+
+func TestSchedulerCriticalExecutionsRespectsPriority(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 0, kind: Critical, priority: 0, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+			{delay: 1, kind: Critical, priority: 4, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+			{delay: 1, kind: Critical, priority: 3, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+			{delay: 1, kind: Critical, priority: 2, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+			{delay: 1, kind: Critical, priority: 1, handler: testDelayedHandler(2, nil), errorHandler: testDummyHandler()},
+		},
+	)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esS, _esS, _esS, _esS},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esS, _esS, _esS},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esS, _esS, _esS},
+			},
+			{
+				at:         4,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS, _esS},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS, _esS},
+			},
+			{
+				at:         6,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR, _esS},
+			},
+			{
+				at:         7,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR, _esS},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esR},
+			},
+			{
+				at:         9,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esR},
+			},
+			{
+				at:         10,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         11,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         12,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 0 * time.Second,
+			1: 2 * time.Second,
+			2: 4 * time.Second,
+			3: 6 * time.Second,
+			4: 8 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+}
