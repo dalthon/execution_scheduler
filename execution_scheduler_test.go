@@ -3682,7 +3682,9 @@ func TestSchedulerSerialExecutionsRunsSerially(t *testing.T) {
 }
 
 func TestSchedulerSerialExecutionsRespectsPriority(t *testing.T) {
-	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
@@ -3749,6 +3751,16 @@ func TestSchedulerSerialExecutionsRespectsPriority(t *testing.T) {
 			},
 			{
 				at:         10,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         11,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
+			},
+			{
+				at:         12,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF, _esF},
 			},
