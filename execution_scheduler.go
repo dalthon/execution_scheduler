@@ -75,8 +75,10 @@ type SchedulerOptions struct {
 	inactivityDelay  time.Duration
 	onPrepare        func(scheduler *Scheduler) error
 	onClosing        func(scheduler *Scheduler) error
-	onLeaveError     func(scheduler *Scheduler) error
 	onError          func(scheduler *Scheduler) error
+	onLeaveError     func(scheduler *Scheduler) error
+	onInactive       func(scheduler *Scheduler) error
+	onLeaveInactive  func(scheduler *Scheduler) error
 	onCrash          func(scheduler *Scheduler)
 	onClose          func(scheduler *Scheduler)
 }
@@ -260,6 +262,8 @@ func (scheduler *Scheduler) processEventOnInactive(event ExecutionEvent) {
 		scheduler.setStatus(ActiveStatus)
 	case WakedEvent:
 		scheduler.setStatus(ClosingStatus)
+	case CrashedEvent:
+		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
@@ -496,8 +500,23 @@ func (scheduler *Scheduler) runOnInactive() {
 		return
 	}
 
+	inactivityStart := scheduler.clock.Now()
+	if scheduler.options.onInactive != nil {
+		err := scheduler.options.onInactive(scheduler)
+		if err != nil {
+			scheduler.signal(CrashedEvent)
+			return
+		}
+	}
+
+	delay := scheduler.options.inactivityDelay - scheduler.clock.Since(inactivityStart)
+	if delay <= time.Duration(0) {
+		scheduler.signal(WakedEvent)
+		return
+	}
+
 	scheduler.inactivityTimer = scheduler.clock.AfterFunc(
-		scheduler.options.inactivityDelay,
+		delay,
 		scheduler.wakeFromInactivity,
 	)
 }
