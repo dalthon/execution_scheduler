@@ -38,22 +38,19 @@ func NewExecution(handler func() error, errorHandler func(error) error, kind Exe
 }
 
 func (execution *Execution) call(scheduler schedulerInterface) bool {
-	scheduler.getLock().Lock()
-	defer scheduler.getLock().Unlock()
-
-	if execution.Status == ExecutionScheduled {
-		execution.Status = ExecutionRunning
-		if execution.timer != nil {
-			execution.timer.Stop()
-			execution.timer = nil
-		}
-
-		scheduler.beforeExecutionCall(execution)
-		go execution.run(scheduler)
-		return true
+	if execution.Status != ExecutionScheduled {
+		return false
 	}
 
-	return false
+	execution.Status = ExecutionRunning
+	if execution.timer != nil {
+		execution.timer.Stop()
+		execution.timer = nil
+	}
+
+	scheduler.beforeExecutionCall(execution)
+	go execution.run(scheduler)
+	return true
 }
 
 func (execution *Execution) run(scheduler schedulerInterface) {

@@ -415,18 +415,18 @@ func (scheduler *Scheduler) execute() {
 
 	priority := math.MinInt
 	topSerialExecution := scheduler.serialQueue.Top()
-	if scheduler.currentSerial == nil && topSerialExecution != nil && topSerialExecution.kind == Critical {
+	if topSerialExecution != nil && topSerialExecution.kind == Critical {
 		priority = topSerialExecution.priority
 	}
 
 	for execution := scheduler.parallelQueue.PopPriority(priority); execution != nil; execution = scheduler.parallelQueue.PopPriority(priority) {
-		go execution.call(scheduler)
+		execution.call(scheduler)
 	}
 
 	if scheduler.currentSerial == nil && topSerialExecution != nil && (topSerialExecution.kind != Critical || scheduler.parallelRunning == 0) {
-		execution := scheduler.serialQueue.PopPriority(priority)
+		execution := scheduler.serialQueue.Pop()
 		if execution != nil {
-			go execution.call(scheduler)
+			execution.call(scheduler)
 		}
 	}
 }

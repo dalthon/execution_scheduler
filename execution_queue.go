@@ -47,7 +47,7 @@ func (queue *ExecutionQueue) Pop() *Execution {
 }
 
 func (queue *ExecutionQueue) PopPriority(priority int) *Execution {
-	if len(queue.queue) == 0 || queue.Top().priority < priority {
+	if len(queue.queue) == 0 || queue.Top().priority <= priority {
 		return nil
 	}
 
