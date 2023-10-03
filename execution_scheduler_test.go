@@ -4200,6 +4200,7 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 
 func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 3 * time.Second
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -4292,6 +4293,7 @@ func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 
 func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
 	options.executionTimeout = 3 * time.Second
 	blownHandlerCount := 0
 	blownUpHandler := func(delay int) testDelayedHandlerParams {
@@ -4322,7 +4324,7 @@ func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 		[]testTimelineExpectations{
 			{
 				at:         0,
-				status:     ActiveStatus,
+				status:     InactiveStatus,
 				executions: []testExecutionStatus{_esP, _esP},
 			},
 			{
