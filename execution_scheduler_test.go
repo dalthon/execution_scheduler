@@ -3594,7 +3594,9 @@ func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
 }
 
 func TestSchedulerSerialExecutionsRunsSerially(t *testing.T) {
-	scheduler := NewScheduler(defaultSchedulerOptions(), nil)
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
@@ -3608,16 +3610,66 @@ func TestSchedulerSerialExecutionsRunsSerially(t *testing.T) {
 
 	timeline.expects(
 		[]testTimelineExpectations{
-			{at: 0, status: ActiveStatus, executions: []testExecutionStatus{_esP, _esP, _esP, _esP}},
-			{at: 1, status: ActiveStatus, executions: []testExecutionStatus{_esR, _esP, _esP, _esP}},
-			{at: 2, status: ActiveStatus, executions: []testExecutionStatus{_esR, _esS, _esP, _esP}},
-			{at: 3, status: ActiveStatus, executions: []testExecutionStatus{_esF, _esR, _esS, _esP}},
-			{at: 4, status: ActiveStatus, executions: []testExecutionStatus{_esF, _esR, _esS, _esS}},
-			{at: 5, status: ActiveStatus, executions: []testExecutionStatus{_esF, _esF, _esR, _esS}},
-			{at: 6, status: ActiveStatus, executions: []testExecutionStatus{_esF, _esF, _esR, _esS}},
-			{at: 7, status: ActiveStatus, executions: []testExecutionStatus{_esF, _esF, _esF, _esR}},
-			{at: 8, status: ActiveStatus, executions: []testExecutionStatus{_esF, _esF, _esF, _esR}},
-			{at: 9, status: ClosedStatus, executions: []testExecutionStatus{_esF, _esF, _esF, _esF}},
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esS, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esS, _esP},
+			},
+			{
+				at:         4,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esS, _esS},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS},
+			},
+			{
+				at:         6,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR, _esS},
+			},
+			{
+				at:         7,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esR},
+			},
+			{
+				at:         9,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+			{
+				at:         10,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
+			{
+				at:         11,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+			},
 		},
 		map[int]time.Duration{
 			0: 1 * time.Second,
