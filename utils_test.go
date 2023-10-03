@@ -210,14 +210,24 @@ type testTimelinesExample struct {
 }
 
 type testDelayedHandlerParams struct {
-	delay  int
-	result error
+	delay        int
+	result       error
+	panic        bool
+	panicMessage string
 }
 
 func testDelayedHandler(delay int, result error) testDelayedHandlerParams {
 	return testDelayedHandlerParams{
 		delay:  delay,
 		result: result,
+	}
+}
+
+func testPanicHandler(delay int, message string) testDelayedHandlerParams {
+	return testDelayedHandlerParams{
+		delay:        delay,
+		panic:        true,
+		panicMessage: message,
 	}
 }
 
@@ -288,6 +298,9 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 				calledAt[index] = clock.Since(startedAt)
 				lock.Unlock()
 				clock.Sleep(time.Duration(params.handler.delay) * time.Second)
+				if params.handler.panic {
+					panic(params.handler.panicMessage)
+				}
 				return params.handler.result
 			},
 			func(err error) error {
@@ -295,6 +308,9 @@ func (timelines *testTimelinesExample) expects(expectations []testTimelineExpect
 				erroredAt[index] = clock.Since(startedAt)
 				lock.Unlock()
 				clock.Sleep(time.Duration(params.errorHandler.delay) * time.Second)
+				if params.errorHandler.panic {
+					panic(params.errorHandler.panicMessage)
+				}
 				return params.errorHandler.result
 			},
 			params.kind,

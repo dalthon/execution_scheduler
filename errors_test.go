@@ -22,3 +22,10 @@ func TestSchedulerNotRecovered(t *testing.T) {
 		t.Fatalf("TimeoutError should have message \"Scheduler could not be recovered from error\", but got \"%v\"", err.Error())
 	}
 }
+
+func TestPanicError(t *testing.T) {
+	err := NewPanicError("Somewhere", "Something went wrong")
+	if err.Error() != "Somewhere panicked with: Something went wrong\n" {
+		t.Fatalf("PanicError should have message \"Somewhere panicked with: Something went wrong\", but got \"%v\"", err.Error())
+	}
+}

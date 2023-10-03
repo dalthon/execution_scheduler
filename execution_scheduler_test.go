@@ -4755,3 +4755,106 @@ func TestSchedulerCriticalExecutionsSchedulesAndWaitsParallels(t *testing.T) {
 		map[int]time.Duration{},
 	)
 }
+
+func TestSchedulerHandlerPanic(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testPanicHandler(1, "Boom!"), errorHandler: testDummyHandler()},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDelayedHandler(1, errors.New("Boom!")), errorHandler: testPanicHandler(1, "Boom!")},
+			{delay: 10, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testPanicHandler(1, "Boom!")},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	leftErrorAt := []time.Duration{}
+	options.onLeaveError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esP, _esP},
+			},
+			{
+				at:         4,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esP},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esP},
+			},
+			{
+				at:         6,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP},
+			},
+			{
+				at:         7,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP},
+			},
+			{
+				at:         8,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP},
+			},
+			{
+				at:         9,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP},
+			},
+			{
+				at:         10,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+			},
+			{
+				at:         11,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esX},
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+			1: 4 * time.Second,
+		},
+		map[int]time.Duration{
+			1: 5 * time.Second,
+			2: 10 * time.Second,
+		},
+	)
+
+	expectedLeftErrorAt := []time.Duration{3 * time.Second, 7 * time.Second}
+	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
+		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
+	}
+}

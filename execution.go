@@ -54,17 +54,26 @@ func (execution *Execution) call(scheduler schedulerInterface) bool {
 }
 
 func (execution *Execution) run(scheduler schedulerInterface) {
+	defer execution.recoverFromRunPanic(scheduler)
+
 	err := execution.handler()
 
 	if err != nil {
 		err = execution.errorHandler(err)
 	}
 
-	scheduler.getLock().Lock()
 	execution.Status = ExecutionFinished
-	scheduler.getLock().Unlock()
-
 	execution.notifyScheduler(scheduler, err, true)
+}
+
+func (execution *Execution) recoverFromRunPanic(scheduler schedulerInterface) {
+	recovery := recover()
+	if recovery == nil {
+		return
+	}
+
+	execution.Status = ExecutionFinished
+	execution.notifyScheduler(scheduler, NewPanicError("Execution", recovery), true)
 }
 
 func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration) {
@@ -85,6 +94,7 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 
 		scheduler.beforeExpireCall(execution)
 		go func() {
+			defer execution.recoverFromExpirePanic(scheduler)
 			err := execution.errorHandler(err)
 			execution.notifyScheduler(scheduler, err, false)
 		}()
@@ -92,6 +102,15 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 	}
 
 	return false
+}
+
+func (execution *Execution) recoverFromExpirePanic(scheduler schedulerInterface) {
+	recovery := recover()
+	if recovery == nil {
+		return
+	}
+
+	execution.notifyScheduler(scheduler, NewPanicError("Execution", recovery), true)
 }
 
 func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error, called bool) {

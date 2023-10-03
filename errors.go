@@ -1,5 +1,9 @@
 package execution_scheduler
 
+import (
+	"fmt"
+)
+
 type TimeoutError struct {
 }
 
@@ -42,4 +46,20 @@ func NewShutdownError() *ShutdownError {
 
 func (err *ShutdownError) Error() string {
 	return "Scheduler was shut down"
+}
+
+type PanicError struct {
+	target string
+	panic  interface{}
+}
+
+func NewPanicError(target string, p interface{}) *PanicError {
+	return &PanicError{
+		target: target,
+		panic:  p,
+	}
+}
+
+func (err *PanicError) Error() string {
+	return fmt.Sprintf("%s panicked with: %v\n", err.target, err.panic)
 }
