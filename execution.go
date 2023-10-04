@@ -79,14 +79,16 @@ func (execution *Execution) recoverFromRunPanic(scheduler schedulerInterface) {
 func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration) {
 	execution.timer = scheduler.getClock().AfterFunc(
 		duration,
-		func() { execution.expire(scheduler, NewTimeoutError()) },
+		func() {
+			scheduler.getLock().Lock()
+			defer scheduler.getLock().Unlock()
+
+			execution.expire(scheduler, NewTimeoutError())
+		},
 	)
 }
 
 func (execution *Execution) expire(scheduler schedulerInterface, err error) bool {
-	scheduler.getLock().Lock()
-	defer scheduler.getLock().Unlock()
-
 	if execution.Status == ExecutionScheduled {
 		execution.Status = ExecutionExpired
 		if execution.timer != nil {

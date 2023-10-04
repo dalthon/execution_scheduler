@@ -33,18 +33,18 @@ type ExecutionEvent uint64
 
 const callbackEventsMask = 0x100
 
-const finishMasks = 0xE00
 const parallelFinishMask = 0x200
 const serialCalledFinishMask = 0x400
 const serialExpiredFinishMask = 0x800
+const finishMasks = parallelFinishMask | serialCalledFinishMask | serialExpiredFinishMask
 
 const (
 	ScheduledEvent ExecutionEvent = iota
 	ShutdownEvent
+	WakedEvent
 
 	PreparedEvent ExecutionEvent = callbackEventsMask | iota
 	CrashedEvent
-	WakedEvent
 	RefreshEvent
 	ClosingEvent
 	OnErrorFinishedEvent
@@ -260,6 +260,17 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 }
 
 func (scheduler *Scheduler) processEventOnInactive(event ExecutionEvent) {
+	if (event & finishMasks) != 0 {
+		if !scheduler.callbackRunning {
+			if scheduler.isRunning() || scheduler.isScheduled() {
+				scheduler.setStatus(ActiveStatus)
+			} else {
+				scheduler.setStatus(ClosingStatus)
+			}
+		}
+		return
+	}
+
 	switch event {
 	case ScheduledEvent:
 		if !scheduler.callbackRunning {
@@ -392,12 +403,8 @@ func (scheduler *Scheduler) setStatus(status SchedulerStatus) {
 		return
 	}
 
-	switch scheduler.Status {
-	case InactiveStatus:
-		if scheduler.inactivityTimer != nil {
-			scheduler.inactivityTimer.Stop()
-			scheduler.inactivityTimer = nil
-		}
+	if scheduler.Status == InactiveStatus {
+		scheduler.runOnLeaveInactive()
 	}
 
 	scheduler.Status = status
@@ -448,11 +455,11 @@ func (scheduler *Scheduler) cancelExecutions() {
 	err := NewSchedulerCrashedError()
 
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
-		go execution.expire(scheduler, err)
+		execution.expire(scheduler, err)
 	}
 
 	for execution := scheduler.serialQueue.Pop(); execution != nil; execution = scheduler.serialQueue.Pop() {
-		go execution.expire(scheduler, err)
+		execution.expire(scheduler, err)
 	}
 }
 
@@ -512,9 +519,15 @@ func (scheduler *Scheduler) runOnInactive() {
 	go func() {
 		inactivityStart := scheduler.clock.Now()
 		if scheduler.options.onInactive != nil {
+
+			scheduler.lock.Lock()
 			scheduler.callbackRunning = true
+			scheduler.lock.Unlock()
 			err := scheduler.options.onInactive(scheduler)
+			scheduler.lock.Lock()
 			scheduler.callbackRunning = false
+			scheduler.lock.Unlock()
+
 			if err != nil {
 				scheduler.signal(CrashedEvent)
 				return
@@ -532,6 +545,13 @@ func (scheduler *Scheduler) runOnInactive() {
 			scheduler.wakeFromInactivity,
 		)
 	}()
+}
+
+func (scheduler *Scheduler) runOnLeaveInactive() {
+	if scheduler.inactivityTimer != nil {
+		scheduler.inactivityTimer.Stop()
+		scheduler.inactivityTimer = nil
+	}
 }
 
 func (scheduler *Scheduler) wakeFromInactivity() {
