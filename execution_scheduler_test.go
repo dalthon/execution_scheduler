@@ -5643,3 +5643,150 @@ func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
 	}
 }
+
+func TestSchedulerTimeoutOnLeaveInactiveCallback(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	options.executionTimeout = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	errorHandler := testErrorHandlerBuilder()
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 3, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: errorHandler(1)},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: errorHandler(3)},
+			{delay: 6, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	leftInactiveAt := []time.Duration{}
+	options.onLeaveInactive = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(5 * time.Second)
+		leftInactiveAt = append(leftInactiveAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	leftErrorAt := []time.Duration{}
+	options.onLeaveError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esS, _esP, _esP, _esP},
+			},
+			{
+				at:         4,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esS, _esS, _esS, _esP},
+			},
+			{
+				at:         5,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esS, _esS, _esP},
+			},
+			{
+				at:         6,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esS},
+			},
+			{
+				at:         7,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esR},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         9,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         10,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         11,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         12,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         13,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         14,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         15,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         16,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+			{
+				at:         17,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esX, _esX, _esX, _esF},
+			},
+		},
+		map[int]time.Duration{3: 7 * time.Second},
+		map[int]time.Duration{
+			0: 5 * time.Second,
+			1: 6 * time.Second,
+			2: 6 * time.Second,
+		},
+	)
+
+	expectedLeftInactiveAt := []time.Duration{7 * time.Second, 17 * time.Second}
+	if !reflect.DeepEqual(leftInactiveAt, expectedLeftInactiveAt) {
+		t.Fatalf("OnLeaveInactive should have finished at %v, but was finished at %v", expectedLeftInactiveAt, leftInactiveAt)
+	}
+
+	expectedLeftErrorAt := []time.Duration{10 * time.Second}
+	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
+		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
+	}
+}
