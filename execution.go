@@ -88,6 +88,7 @@ func (execution *Execution) setExpiration(scheduler schedulerInterface, duration
 	)
 }
 
+// TODO: Think about TimeoutError not changing scheduler status to Error
 func (execution *Execution) expire(scheduler schedulerInterface, err error) bool {
 	if execution.Status == ExecutionScheduled {
 		execution.Status = ExecutionExpired
