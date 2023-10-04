@@ -5080,4 +5080,82 @@ func TestSchedulerOnInactiveCallback(t *testing.T) {
 	}
 }
 
-// TODO: Test inactive shutdown during inactive callback
+func TestSchedulerShutdownOnInactiveCallback(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	inactiveAt := []time.Duration{}
+	options.onInactive = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(3 * time.Second)
+		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	scheduler.getClock().AfterFunc(5*time.Second, scheduler.Shutdown)
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esS},
+			},
+			{
+				at:         2,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esS},
+			},
+			{
+				at:         3,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         4,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         5,
+				status:     ShutdownStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewShutdownError(),
+			},
+			{
+				at:         6,
+				status:     ShutdownStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewShutdownError(),
+			},
+			{
+				at:         7,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewShutdownError(),
+			},
+		},
+		map[int]time.Duration{0: 3 * time.Second},
+		map[int]time.Duration{},
+	)
+
+	expectedInactiveAt := []time.Duration{3 * time.Second, 7 * time.Second}
+	if !reflect.DeepEqual(inactiveAt, expectedInactiveAt) {
+		t.Fatalf("OnInactive should have finished at %v, but was finished at %v", expectedInactiveAt, inactiveAt)
+	}
+}

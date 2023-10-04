@@ -40,11 +40,11 @@ const serialExpiredFinishMask = 0x800
 
 const (
 	ScheduledEvent ExecutionEvent = iota
-	WakedEvent
-	CrashedEvent
 	ShutdownEvent
 
 	PreparedEvent ExecutionEvent = callbackEventsMask | iota
+	CrashedEvent
+	WakedEvent
 	RefreshEvent
 	ClosingEvent
 	OnErrorFinishedEvent
@@ -98,6 +98,7 @@ type Scheduler struct {
 	clock           clockwork.Clock
 	waitGroup       *sync.WaitGroup
 	inactivityTimer clockwork.Timer
+	startedAt       time.Time
 }
 
 func NewScheduler(options *SchedulerOptions, waitGroup *sync.WaitGroup) *Scheduler {
@@ -153,6 +154,7 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 }
 
 func (scheduler *Scheduler) Run() {
+	scheduler.startedAt = scheduler.clock.Now()
 	scheduler.runPrepareCallback()
 }
 
@@ -167,6 +169,7 @@ func (scheduler *Scheduler) eventLoop() {
 
 		scheduler.closedCallback(event)
 		scheduler.finishedExecutions(event)
+
 		switch scheduler.Status {
 		case PendingStatus:
 			scheduler.processEventOnPending(event)
@@ -259,9 +262,15 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 func (scheduler *Scheduler) processEventOnInactive(event ExecutionEvent) {
 	switch event {
 	case ScheduledEvent:
-		scheduler.setStatus(ActiveStatus)
+		if !scheduler.callbackRunning {
+			scheduler.setStatus(ActiveStatus)
+		}
 	case WakedEvent:
-		scheduler.setStatus(ClosingStatus)
+		if scheduler.isScheduled() || scheduler.isRunning() {
+			scheduler.setStatus(ActiveStatus)
+		} else {
+			scheduler.setStatus(ClosingStatus)
+		}
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
 	case ShutdownEvent:
@@ -500,25 +509,29 @@ func (scheduler *Scheduler) runOnInactive() {
 		return
 	}
 
-	inactivityStart := scheduler.clock.Now()
-	if scheduler.options.onInactive != nil {
-		err := scheduler.options.onInactive(scheduler)
-		if err != nil {
-			scheduler.signal(CrashedEvent)
+	go func() {
+		inactivityStart := scheduler.clock.Now()
+		if scheduler.options.onInactive != nil {
+			scheduler.callbackRunning = true
+			err := scheduler.options.onInactive(scheduler)
+			scheduler.callbackRunning = false
+			if err != nil {
+				scheduler.signal(CrashedEvent)
+				return
+			}
+		}
+
+		delay := scheduler.options.inactivityDelay - scheduler.clock.Since(inactivityStart)
+		if delay <= time.Duration(0) {
+			scheduler.signal(WakedEvent)
 			return
 		}
-	}
 
-	delay := scheduler.options.inactivityDelay - scheduler.clock.Since(inactivityStart)
-	if delay <= time.Duration(0) {
-		scheduler.signal(WakedEvent)
-		return
-	}
-
-	scheduler.inactivityTimer = scheduler.clock.AfterFunc(
-		delay,
-		scheduler.wakeFromInactivity,
-	)
+		scheduler.inactivityTimer = scheduler.clock.AfterFunc(
+			delay,
+			scheduler.wakeFromInactivity,
+		)
+	}()
 }
 
 func (scheduler *Scheduler) wakeFromInactivity() {
