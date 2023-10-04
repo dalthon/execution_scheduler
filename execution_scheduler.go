@@ -260,17 +260,6 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 }
 
 func (scheduler *Scheduler) processEventOnInactive(event ExecutionEvent) {
-	if (event & finishMasks) != 0 {
-		if !scheduler.callbackRunning {
-			if scheduler.isRunning() || scheduler.isScheduled() {
-				scheduler.setStatus(ActiveStatus)
-			} else {
-				scheduler.setStatus(ClosingStatus)
-			}
-		}
-		return
-	}
-
 	switch event {
 	case ScheduledEvent:
 		if !scheduler.callbackRunning {
@@ -516,35 +505,44 @@ func (scheduler *Scheduler) runOnInactive() {
 		return
 	}
 
-	go func() {
-		inactivityStart := scheduler.clock.Now()
-		if scheduler.options.onInactive != nil {
+	go scheduler.inactiveWaiting()
+}
 
-			scheduler.lock.Lock()
-			scheduler.callbackRunning = true
-			scheduler.lock.Unlock()
-			err := scheduler.options.onInactive(scheduler)
-			scheduler.lock.Lock()
-			scheduler.callbackRunning = false
-			scheduler.lock.Unlock()
+func (scheduler *Scheduler) inactiveWaiting() {
+	inactivityStart := scheduler.clock.Now()
+	if scheduler.options.onInactive != nil {
 
-			if err != nil {
-				scheduler.signal(CrashedEvent)
-				return
-			}
-		}
+		scheduler.lock.Lock()
+		scheduler.callbackRunning = true
+		scheduler.lock.Unlock()
 
-		delay := scheduler.options.inactivityDelay - scheduler.clock.Since(inactivityStart)
-		if delay <= time.Duration(0) {
+		err := scheduler.options.onInactive(scheduler)
+
+		scheduler.lock.Lock()
+		scheduler.callbackRunning = false
+		if err == nil && (scheduler.isScheduled() || scheduler.isRunning()) {
 			scheduler.signal(WakedEvent)
+			scheduler.lock.Unlock()
 			return
 		}
+		scheduler.lock.Unlock()
 
-		scheduler.inactivityTimer = scheduler.clock.AfterFunc(
-			delay,
-			scheduler.wakeFromInactivity,
-		)
-	}()
+		if err != nil {
+			scheduler.signal(CrashedEvent)
+			return
+		}
+	}
+
+	delay := scheduler.options.inactivityDelay - scheduler.clock.Since(inactivityStart)
+	if delay <= time.Duration(0) {
+		scheduler.signal(WakedEvent)
+		return
+	}
+
+	scheduler.inactivityTimer = scheduler.clock.AfterFunc(
+		delay,
+		scheduler.wakeFromInactivity,
+	)
 }
 
 func (scheduler *Scheduler) runOnLeaveInactive() {

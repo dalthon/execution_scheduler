@@ -5319,3 +5319,126 @@ func TestSchedulerTimeoutWhileOnInactiveCallback(t *testing.T) {
 		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
 	}
 }
+
+func TestSchedulerTimeoutAfterOnInactiveCallback(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 5 * time.Second
+	options.executionTimeout = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	errorHandler := testErrorHandlerBuilder()
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: errorHandler(0)},
+			{delay: 4, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+			{delay: 8, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: errorHandler(4)},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	inactiveAt := []time.Duration{}
+	options.onInactive = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(2 * time.Second)
+		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
+
+		return nil
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP, _esP, _esP},
+			},
+			{
+				at:         1,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esS, _esP, _esP},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR, _esP, _esP},
+			},
+			{
+				at:         3,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esP, _esP},
+			},
+			{
+				at:         4,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esS, _esP},
+			},
+			{
+				at:         5,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esR, _esP},
+			},
+			{
+				at:         6,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP},
+			},
+			{
+				at:         7,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esP},
+			},
+			{
+				at:         8,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esR},
+			},
+			{
+				at:         9,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         10,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         11,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         12,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         13,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+			{
+				at:         14,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF, _esF, _esF},
+			},
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+			1: 5 * time.Second,
+			2: 8 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	expectedInactiveAt := []time.Duration{
+		2 * time.Second,
+		5 * time.Second,
+		8 * time.Second,
+		11 * time.Second,
+	}
+	if !reflect.DeepEqual(inactiveAt, expectedInactiveAt) {
+		t.Fatalf("OnInactive should have finished at %v, but was finished at %v", expectedInactiveAt, inactiveAt)
+	}
+}
