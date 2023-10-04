@@ -262,9 +262,7 @@ func (scheduler *Scheduler) processEventOnActive(event ExecutionEvent) {
 func (scheduler *Scheduler) processEventOnInactive(event ExecutionEvent) {
 	switch event {
 	case ScheduledEvent:
-		if !scheduler.callbackRunning {
-			scheduler.setStatus(ActiveStatus)
-		}
+		scheduler.leaveInactive()
 	case WakedEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.setStatus(ActiveStatus)
@@ -561,7 +559,43 @@ func (scheduler *Scheduler) wakeFromInactivity() {
 		scheduler.inactivityTimer = nil
 	}
 
-	scheduler.signal(WakedEvent)
+	if scheduler.options.onLeaveInactive == nil {
+		scheduler.signal(WakedEvent)
+		return
+	}
+
+	scheduler.leaveInactive()
+}
+
+func (scheduler *Scheduler) leaveInactive() {
+	if scheduler.callbackRunning {
+		return
+	}
+
+	if scheduler.options.onLeaveInactive == nil {
+		if scheduler.isScheduled() || scheduler.isRunning() {
+			scheduler.setStatus(ActiveStatus)
+		} else {
+			scheduler.setStatus(ClosingStatus)
+		}
+		return
+	}
+
+	scheduler.callbackRunning = true
+
+	go func() {
+		err := scheduler.options.onLeaveInactive(scheduler)
+
+		scheduler.lock.Lock()
+		defer scheduler.lock.Unlock()
+
+		scheduler.callbackRunning = false
+		if err == nil {
+			scheduler.signal(WakedEvent)
+		} else {
+			scheduler.signal(CrashedEvent)
+		}
+	}()
 }
 
 func (scheduler *Scheduler) runOnClose() {
