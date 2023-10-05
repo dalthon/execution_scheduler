@@ -56,7 +56,7 @@ func (execution *Execution) call(scheduler schedulerInterface) bool {
 func (execution *Execution) run(scheduler schedulerInterface) {
 	defer execution.recoverFromRunPanic(scheduler)
 
-	err := execution.handler()
+	err := (panicProofHandler(execution.handler))()
 
 	if err != nil {
 		err = execution.errorHandler(err)
@@ -142,5 +142,24 @@ func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err er
 		scheduler.signal(errorSerialEvent)
 	} else {
 		scheduler.signal(expiredSerialEvent)
+	}
+}
+
+func panicProofHandler(callback func() error) func() error {
+	return func() error {
+		errorChannel := make(chan error)
+
+		go func() {
+			defer func() {
+				if recovery := recover(); recovery != nil {
+					errorChannel <- newPanicError("Execution", recovery)
+				}
+			}()
+
+			err := callback()
+			errorChannel <- err
+		}()
+
+		return <-errorChannel
 	}
 }

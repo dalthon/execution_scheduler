@@ -61,5 +61,5 @@ func newPanicError(target string, p interface{}) *PanicError {
 }
 
 func (err *PanicError) Error() string {
-	return fmt.Sprintf("%s panicked with: %v\n", err.target, err.panic)
+	return fmt.Sprintf("%s panicked with: %v", err.target, err.panic)
 }
