@@ -14,8 +14,8 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-func defaultSchedulerOptions[C any]() *Options[C] {
-	return &Options[C]{
+func defaultSchedulerOptions() *Options[any] {
+	return &Options[any]{
 		ExecutionTimeout: time.Duration(0),
 		InactivityDelay:  time.Duration(0),
 		OnPrepare:        nil,

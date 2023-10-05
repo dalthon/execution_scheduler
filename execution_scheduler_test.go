@@ -11,7 +11,7 @@ import (
 )
 
 func TestSchedulerEmptyTimeline(t *testing.T) {
-	scheduler := NewScheduler(defaultSchedulerOptions[interface{}](), nil, nil)
+	scheduler := NewScheduler(defaultSchedulerOptions(), nil, nil)
 	timeline := newTestTimelinesExample(
 		t,
 		scheduler,
@@ -28,7 +28,7 @@ func TestSchedulerEmptyTimeline(t *testing.T) {
 }
 
 func TestSchedulerMinimalSerialTimeline(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -53,7 +53,7 @@ func TestSchedulerMinimalSerialTimeline(t *testing.T) {
 }
 
 func TestSchedulerMinimalParallelTimeline(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -78,7 +78,7 @@ func TestSchedulerMinimalParallelTimeline(t *testing.T) {
 }
 
 func TestSchedulerTimeout(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
@@ -276,7 +276,7 @@ func TestSchedulerTimeout(t *testing.T) {
 }
 
 func TestSchedulerAllPendingTransitions(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -448,7 +448,7 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 }
 
 func TestSchedulerSerialExpiration(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil, nil)
@@ -570,7 +570,7 @@ func TestSchedulerSerialExpiration(t *testing.T) {
 }
 
 func TestSchedulerAllErrorTransitions(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -698,7 +698,7 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 }
 
 func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -793,7 +793,7 @@ func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 }
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -854,7 +854,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 }
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -913,7 +913,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
 }
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1071,7 +1071,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T)
 }
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1231,7 +1231,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *te
 }
 
 func TestSchedulerCrashedWithoutLeaveCallback(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1319,7 +1319,7 @@ func TestSchedulerCrashedWithoutLeaveCallback(t *testing.T) {
 }
 
 func TestSchedulerCrashedFromPending(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -1405,7 +1405,7 @@ func TestSchedulerCrashedFromPending(t *testing.T) {
 }
 
 func TestSchedulerCrashedFromError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1504,7 +1504,7 @@ func TestSchedulerCrashedFromError(t *testing.T) {
 }
 
 func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1615,7 +1615,7 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 }
 
 func TestSchedulerCrashedWaitingRunning(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1721,7 +1721,7 @@ func TestSchedulerCrashedWaitingRunning(t *testing.T) {
 }
 
 func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1838,7 +1838,7 @@ func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 }
 
 func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -1960,7 +1960,7 @@ func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 }
 
 func TestSchedulerCrashedFromClosing(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2057,7 +2057,7 @@ func TestSchedulerCrashedFromClosing(t *testing.T) {
 }
 
 func TestSchedulerAllInactiveTransitions(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2125,7 +2125,7 @@ func TestSchedulerAllInactiveTransitions(t *testing.T) {
 }
 
 func TestSchedulerClosed(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2200,7 +2200,7 @@ func TestSchedulerClosed(t *testing.T) {
 }
 
 func TestSchedulerAllActiveTransitions(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -2359,7 +2359,7 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 }
 
 func TestSchedulerFromClosingToCrashed(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2493,7 +2493,7 @@ func TestSchedulerFromClosingToCrashed(t *testing.T) {
 }
 
 func TestSchedulerFromClosingToClosed(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2606,7 +2606,7 @@ func TestSchedulerFromClosingToClosed(t *testing.T) {
 
 func TestSchedulerWaitForWaitGroup(t *testing.T) {
 	var waitGroup sync.WaitGroup
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, &waitGroup)
 	timeline := newTestTimelinesExample(
@@ -2679,7 +2679,7 @@ func TestSchedulerWaitForWaitGroup(t *testing.T) {
 }
 
 func TestSchedulerShutdownTwice(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2743,7 +2743,7 @@ func TestSchedulerShutdownTwice(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnPending(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2815,7 +2815,7 @@ func TestSchedulerShutdownOnPending(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnActive(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2874,7 +2874,7 @@ func TestSchedulerShutdownOnActive(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnInactive(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -2937,7 +2937,7 @@ func TestSchedulerShutdownOnInactive(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnClosing(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -3031,7 +3031,7 @@ func TestSchedulerShutdownOnClosing(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -3121,7 +3121,7 @@ func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -3226,7 +3226,7 @@ func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnErrorWhileRunning(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -3299,7 +3299,7 @@ func TestSchedulerShutdownOnErrorWhileRunning(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnErrorWhileCallbackRunning(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -3394,7 +3394,7 @@ func TestSchedulerShutdownOnErrorWhileCallbackRunning(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -3489,7 +3489,7 @@ func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
 }
 
 func TestSchedulerSerialExecutionsRunsSerially(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -3577,7 +3577,7 @@ func TestSchedulerSerialExecutionsRunsSerially(t *testing.T) {
 }
 
 func TestSchedulerSerialExecutionsRespectsPriority(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -3672,7 +3672,7 @@ func TestSchedulerSerialExecutionsRespectsPriority(t *testing.T) {
 }
 
 func TestSchedulerSerialExecutionExpireWhileRunning(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 3 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
@@ -3748,7 +3748,7 @@ func TestSchedulerSerialExecutionExpireWhileRunning(t *testing.T) {
 }
 
 func TestSchedulerSerialExecutionLeaveExpiredToInactive(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.ExecutionTimeout = 3 * time.Second
 	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
@@ -3848,7 +3848,7 @@ func TestSchedulerSerialExecutionLeaveExpiredToInactive(t *testing.T) {
 }
 
 func TestSchedulerSerialExecutionDuringError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
@@ -4089,7 +4089,7 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 }
 
 func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
@@ -4177,7 +4177,7 @@ func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 }
 
 func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
@@ -4262,7 +4262,7 @@ func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 }
 
 func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 2 * time.Second
 	errorHandler := testErrorHandlerBuilder()
@@ -4361,7 +4361,7 @@ func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
 }
 
 func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 2 * time.Second
 	errorHandler := testErrorHandlerBuilder()
@@ -4460,7 +4460,7 @@ func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
 }
 
 func TestSchedulerCriticalExecutionsRunsSerially(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -4548,7 +4548,7 @@ func TestSchedulerCriticalExecutionsRunsSerially(t *testing.T) {
 }
 
 func TestSchedulerCriticalExecutionsRespectsPriority(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -4643,7 +4643,7 @@ func TestSchedulerCriticalExecutionsRespectsPriority(t *testing.T) {
 }
 
 func TestSchedulerCriticalExecutionsSchedulesAndWaitsParallels(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -4757,7 +4757,7 @@ func TestSchedulerCriticalExecutionsSchedulesAndWaitsParallels(t *testing.T) {
 }
 
 func TestSchedulerHandlerPanic(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -4860,7 +4860,7 @@ func TestSchedulerHandlerPanic(t *testing.T) {
 }
 
 func TestSchedulerOnInactiveCallback(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -5083,7 +5083,7 @@ func TestSchedulerOnInactiveCallback(t *testing.T) {
 }
 
 func TestSchedulerShutdownOnInactiveCallback(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -5163,7 +5163,7 @@ func TestSchedulerShutdownOnInactiveCallback(t *testing.T) {
 }
 
 func TestSchedulerTimeoutWhileOnInactiveCallback(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
@@ -5323,7 +5323,7 @@ func TestSchedulerTimeoutWhileOnInactiveCallback(t *testing.T) {
 }
 
 func TestSchedulerTimeoutAfterOnInactiveCallback(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 5 * time.Second
 	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
@@ -5446,7 +5446,7 @@ func TestSchedulerTimeoutAfterOnInactiveCallback(t *testing.T) {
 }
 
 func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -5649,7 +5649,7 @@ func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 }
 
 func TestSchedulerTimeoutOnLeaveInactiveCallback(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
@@ -5796,7 +5796,7 @@ func TestSchedulerTimeoutOnLeaveInactiveCallback(t *testing.T) {
 }
 
 func TestSchedulerHandlePanicOnPrepare(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -5856,7 +5856,7 @@ func TestSchedulerHandlePanicOnPrepare(t *testing.T) {
 }
 
 func TestSchedulerHandlePanicOnClosing(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -5941,7 +5941,7 @@ func TestSchedulerHandlePanicOnClosing(t *testing.T) {
 }
 
 func TestSchedulerHandlePanicOnError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -6024,7 +6024,7 @@ func TestSchedulerHandlePanicOnError(t *testing.T) {
 }
 
 func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	errorHandler := testErrorHandlerBuilder()
@@ -6107,7 +6107,7 @@ func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
 }
 
 func TestSchedulerHandlePanicOnInactive(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
@@ -6168,7 +6168,7 @@ func TestSchedulerHandlePanicOnInactive(t *testing.T) {
 }
 
 func TestSchedulerHandlePanicOnLeaveInactive(t *testing.T) {
-	options := defaultSchedulerOptions[interface{}]()
+	options := defaultSchedulerOptions()
 	options.InactivityDelay = 1 * time.Second
 	scheduler := NewScheduler(options, nil, nil)
 	timeline := newTestTimelinesExample(
