@@ -122,25 +122,25 @@ func (execution *Execution) recoverFromExpirePanic(scheduler schedulerInterface)
 func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error, called bool) {
 	if execution.kind == Parallel {
 		if err == nil {
-			scheduler.signal(FinishedParallelEvent)
+			scheduler.signal(finishedParallelEvent)
 		} else {
-			scheduler.signal(ErrorParallelEvent)
+			scheduler.signal(errorParallelEvent)
 		}
 		return
 	}
 
 	if err == nil {
 		if called {
-			scheduler.signal(FinishedSerialEvent)
+			scheduler.signal(finishedSerialEvent)
 		} else {
-			scheduler.signal(ExpiredFinishedSerialEvent)
+			scheduler.signal(expiredFinishedSerialEvent)
 		}
 		return
 	}
 
 	if called {
-		scheduler.signal(ErrorSerialEvent)
+		scheduler.signal(errorSerialEvent)
 	} else {
-		scheduler.signal(ExpiredSerialEvent)
+		scheduler.signal(expiredSerialEvent)
 	}
 }

@@ -37,7 +37,7 @@ const (
 	ShutdownStatus
 )
 
-type Event uint64
+type schedulerEvent uint64
 
 const callbackEventsMask = 0x100
 
@@ -47,25 +47,25 @@ const serialExpiredFinishMask = 0x800
 const finishMasks = parallelFinishMask | serialCalledFinishMask | serialExpiredFinishMask
 
 const (
-	ScheduledEvent Event = iota
-	ShutdownEvent
-	WakedEvent
+	scheduledEvent schedulerEvent = iota
+	shutdownEvent
+	wakedEvent
 
-	PreparedEvent Event = callbackEventsMask | iota
-	CrashedEvent
-	RefreshEvent
-	ClosingEvent
-	OnErrorFinishedEvent
-	OnCrashFinishedEvent
+	preparedEvent schedulerEvent = callbackEventsMask | iota
+	crashedEvent
+	refreshEvent
+	closingEvent
+	onErrorFinishedEvent
+	onCrashFinishedEvent
 
-	FinishedParallelEvent Event = parallelFinishMask | iota
-	ErrorParallelEvent
+	finishedParallelEvent schedulerEvent = parallelFinishMask | iota
+	errorParallelEvent
 
-	FinishedSerialEvent Event = serialCalledFinishMask | iota
-	ErrorSerialEvent
+	finishedSerialEvent schedulerEvent = serialCalledFinishMask | iota
+	errorSerialEvent
 
-	ExpiredFinishedSerialEvent Event = serialExpiredFinishMask | iota
-	ExpiredSerialEvent
+	expiredFinishedSerialEvent schedulerEvent = serialExpiredFinishMask | iota
+	expiredSerialEvent
 )
 
 type schedulerInterface interface {
@@ -73,7 +73,7 @@ type schedulerInterface interface {
 	beforeExpireCall(execution *Execution)
 	getLock() *sync.Mutex
 	getClock() clockwork.Clock
-	signal(event Event)
+	signal(event schedulerEvent)
 	remove(execution *Execution)
 	Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution
 }
@@ -102,7 +102,7 @@ type Scheduler[C any] struct {
 	currentSerial   *Execution
 	parallelQueue   *executionQueue
 	serialQueue     *executionQueue
-	events          chan Event
+	events          chan schedulerEvent
 	callbackRunning bool
 	clock           clockwork.Clock
 	waitGroup       *sync.WaitGroup
@@ -120,7 +120,7 @@ func NewScheduler[C any](options *Options[C], context C, waitGroup *sync.WaitGro
 		currentSerial:   nil,
 		parallelQueue:   newExecutionQueue(),
 		serialQueue:     newExecutionQueue(),
-		events:          make(chan Event, 16),
+		events:          make(chan schedulerEvent, 16),
 		callbackRunning: false,
 		clock:           clockwork.NewRealClock(),
 		waitGroup:       waitGroup,
@@ -158,7 +158,7 @@ func (scheduler *Scheduler[C]) Schedule(handler func() error, errorHandler func(
 	if scheduler.options.ExecutionTimeout != time.Duration(0) {
 		execution.setExpiration(scheduler, scheduler.options.ExecutionTimeout)
 	}
-	scheduler.signal(ScheduledEvent)
+	scheduler.signal(scheduledEvent)
 
 	return execution
 }
@@ -169,7 +169,7 @@ func (scheduler *Scheduler[C]) Run() {
 }
 
 func (scheduler *Scheduler[C]) Shutdown() {
-	scheduler.signal(ShutdownEvent)
+	scheduler.signal(shutdownEvent)
 }
 
 func (scheduler *Scheduler[C]) eventLoop() {
@@ -203,13 +203,13 @@ func (scheduler *Scheduler[C]) eventLoop() {
 	}
 }
 
-func (scheduler *Scheduler[C]) closedCallback(event Event) {
+func (scheduler *Scheduler[C]) closedCallback(event schedulerEvent) {
 	if (event & callbackEventsMask) == callbackEventsMask {
 		scheduler.callbackRunning = false
 	}
 }
 
-func (scheduler *Scheduler[C]) finishedExecutions(event Event) {
+func (scheduler *Scheduler[C]) finishedExecutions(event schedulerEvent) {
 	switch event & finishMasks {
 	case parallelFinishMask:
 		scheduler.parallelRunning -= 1
@@ -221,174 +221,174 @@ func (scheduler *Scheduler[C]) finishedExecutions(event Event) {
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnPending(event Event) {
+func (scheduler *Scheduler[C]) processEventOnPending(event schedulerEvent) {
 	switch event {
-	case PreparedEvent:
+	case preparedEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.setStatus(ActiveStatus)
 		} else {
 			scheduler.setStatus(InactiveStatus)
 		}
-	case CrashedEvent:
+	case crashedEvent:
 		scheduler.setStatus(CrashedStatus)
-	case ShutdownEvent:
+	case shutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnActive(event Event) {
+func (scheduler *Scheduler[C]) processEventOnActive(event schedulerEvent) {
 	switch event {
-	case ScheduledEvent:
+	case scheduledEvent:
 		scheduler.execute()
-	case FinishedParallelEvent:
+	case finishedParallelEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.execute()
 		} else {
 			scheduler.setStatus(InactiveStatus)
 		}
-	case ErrorParallelEvent:
+	case errorParallelEvent:
 		scheduler.setStatus(ErrorStatus)
-	case FinishedSerialEvent:
+	case finishedSerialEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.execute()
 		} else {
 			scheduler.setStatus(InactiveStatus)
 		}
-	case ExpiredFinishedSerialEvent:
+	case expiredFinishedSerialEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.execute()
 		} else {
 			scheduler.setStatus(InactiveStatus)
 		}
-	case ErrorSerialEvent:
+	case errorSerialEvent:
 		scheduler.setStatus(ErrorStatus)
-	case ExpiredSerialEvent:
+	case expiredSerialEvent:
 		scheduler.setStatus(ErrorStatus)
-	case ShutdownEvent:
+	case shutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnInactive(event Event) {
+func (scheduler *Scheduler[C]) processEventOnInactive(event schedulerEvent) {
 	switch event {
-	case ScheduledEvent:
+	case scheduledEvent:
 		scheduler.leaveInactive()
-	case WakedEvent:
+	case wakedEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.setStatus(ActiveStatus)
 		} else {
 			scheduler.setStatus(ClosingStatus)
 		}
-	case CrashedEvent:
+	case crashedEvent:
 		scheduler.setStatus(CrashedStatus)
-	case ShutdownEvent:
+	case shutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnClosing(event Event) {
+func (scheduler *Scheduler[C]) processEventOnClosing(event schedulerEvent) {
 	switch event {
-	case ClosingEvent:
+	case closingEvent:
 		if scheduler.isRunning() || scheduler.isScheduled() {
 			scheduler.setStatus(ActiveStatus)
 		} else {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case CrashedEvent:
+	case crashedEvent:
 		scheduler.setStatus(CrashedStatus)
-	case ShutdownEvent:
+	case shutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnClosed(event Event) {
-	if event == ScheduledEvent {
+func (scheduler *Scheduler[C]) processEventOnClosed(event schedulerEvent) {
+	if event == scheduledEvent {
 		scheduler.cancelExecutions()
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnError(event Event) {
+func (scheduler *Scheduler[C]) processEventOnError(event schedulerEvent) {
 	switch event {
-	case FinishedParallelEvent:
+	case finishedParallelEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
-	case FinishedSerialEvent:
+	case finishedSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
-	case ExpiredFinishedSerialEvent:
+	case expiredFinishedSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
-	case RefreshEvent:
+	case refreshEvent:
 		scheduler.setStatus(PendingStatus)
-	case OnErrorFinishedEvent:
+	case onErrorFinishedEvent:
 		if !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
-	case ErrorParallelEvent:
+	case errorParallelEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
-	case ErrorSerialEvent:
+	case errorSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
-	case ExpiredSerialEvent:
+	case expiredSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
 			scheduler.runOnLeaveErrorCallback()
 		}
 
-	case CrashedEvent:
+	case crashedEvent:
 		scheduler.setStatus(CrashedStatus)
-	case ShutdownEvent:
+	case shutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnCrashed(event Event) {
+func (scheduler *Scheduler[C]) processEventOnCrashed(event schedulerEvent) {
 	switch event {
-	case ScheduledEvent:
+	case scheduledEvent:
 		scheduler.cancelExecutions()
-	case FinishedParallelEvent:
+	case finishedParallelEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case FinishedSerialEvent:
+	case finishedSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case ExpiredFinishedSerialEvent:
+	case expiredFinishedSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case OnCrashFinishedEvent:
+	case onCrashFinishedEvent:
 		if !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case ErrorParallelEvent:
+	case errorParallelEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case ErrorSerialEvent:
+	case errorSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case ExpiredSerialEvent:
+	case expiredSerialEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 			scheduler.setStatus(ClosedStatus)
 		}
-	case ShutdownEvent:
+	case shutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	}
 }
 
-func (scheduler *Scheduler[C]) processEventOnShutdown(event Event) {
+func (scheduler *Scheduler[C]) processEventOnShutdown(event schedulerEvent) {
 	switch event {
-	case CrashedEvent:
+	case crashedEvent:
 		scheduler.setStatus(CrashedStatus)
-	case ShutdownEvent:
+	case shutdownEvent:
 		scheduler.setStatus(ShutdownStatus)
 	default:
 		scheduler.tryToClose()
@@ -487,7 +487,7 @@ func (scheduler *Scheduler[C]) getClock() clockwork.Clock {
 	return scheduler.clock
 }
 
-func (scheduler *Scheduler[C]) signal(event Event) {
+func (scheduler *Scheduler[C]) signal(event schedulerEvent) {
 	scheduler.events <- event
 }
 
@@ -509,7 +509,7 @@ func (scheduler *Scheduler[C]) isScheduled() bool {
 
 func (scheduler *Scheduler[C]) runOnInactive() {
 	if scheduler.options.InactivityDelay == time.Duration(0) {
-		scheduler.signal(WakedEvent)
+		scheduler.signal(wakedEvent)
 		return
 	}
 
@@ -529,7 +529,7 @@ func (scheduler *Scheduler[C]) inactiveWaiting() {
 		scheduler.lock.Lock()
 		scheduler.callbackRunning = false
 		if err == nil && (scheduler.isScheduled() || scheduler.isRunning()) {
-			scheduler.signal(WakedEvent)
+			scheduler.signal(wakedEvent)
 			scheduler.lock.Unlock()
 			return
 		}
@@ -540,14 +540,14 @@ func (scheduler *Scheduler[C]) inactiveWaiting() {
 		scheduler.lock.Unlock()
 
 		if err != nil {
-			scheduler.signal(CrashedEvent)
+			scheduler.signal(crashedEvent)
 			return
 		}
 	}
 
 	delay := scheduler.options.InactivityDelay - scheduler.clock.Since(inactivityStart)
 	if delay <= time.Duration(0) {
-		scheduler.signal(WakedEvent)
+		scheduler.signal(wakedEvent)
 		return
 	}
 
@@ -574,7 +574,7 @@ func (scheduler *Scheduler[C]) wakeFromInactivity() {
 	}
 
 	if scheduler.options.OnLeaveInactive == nil {
-		scheduler.signal(WakedEvent)
+		scheduler.signal(wakedEvent)
 		return
 	}
 
@@ -603,12 +603,12 @@ func (scheduler *Scheduler[C]) leaveInactive() {
 
 		scheduler.callbackRunning = false
 		if err == nil {
-			scheduler.signal(WakedEvent)
+			scheduler.signal(wakedEvent)
 		} else {
 			if scheduler.Err == nil {
 				scheduler.Err = err
 			}
-			scheduler.signal(CrashedEvent)
+			scheduler.signal(crashedEvent)
 		}
 	}()
 }
@@ -633,13 +633,13 @@ func (scheduler *Scheduler[C]) runOnCrash() {
 	scheduler.cancelExecutions()
 
 	if scheduler.options.OnCrash == nil {
-		scheduler.signal(OnCrashFinishedEvent)
+		scheduler.signal(onCrashFinishedEvent)
 		return
 	}
 
 	go func() {
 		scheduler.options.OnCrash(scheduler)
-		scheduler.signal(OnCrashFinishedEvent)
+		scheduler.signal(onCrashFinishedEvent)
 	}()
 }
 
@@ -663,29 +663,29 @@ func (scheduler *Scheduler[C]) runOnLeaveErrorCallback() {
 		if scheduler.Err == nil {
 			scheduler.Err = newSchedulerNotRecovered()
 		}
-		scheduler.signal(CrashedEvent)
+		scheduler.signal(crashedEvent)
 		return
 	}
 
-	go scheduler.runAsyncCallbackAndFireEvent(panicProofCallback(scheduler.options.OnLeaveError, "OnLeaveError"), RefreshEvent)
+	go scheduler.runAsyncCallbackAndFireEvent(panicProofCallback(scheduler.options.OnLeaveError, "OnLeaveError"), refreshEvent)
 }
 
 func (scheduler *Scheduler[C]) runOnErrorCallback() {
 	scheduler.callbackRunning = true
-	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnError, "OnError"), OnErrorFinishedEvent)
+	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnError, "OnError"), onErrorFinishedEvent)
 }
 
 func (scheduler *Scheduler[C]) runPrepareCallback() {
 	scheduler.callbackRunning = true
-	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnPrepare, "OnPrepare"), PreparedEvent)
+	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnPrepare, "OnPrepare"), preparedEvent)
 }
 
 func (scheduler *Scheduler[C]) runOnClosingCallback() {
 	scheduler.callbackRunning = true
-	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnClosing, "OnClosing"), ClosingEvent)
+	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnClosing, "OnClosing"), closingEvent)
 }
 
-func (scheduler *Scheduler[C]) runCallbackAndFireEvent(callback func(*Scheduler[C]) error, event Event) {
+func (scheduler *Scheduler[C]) runCallbackAndFireEvent(callback func(*Scheduler[C]) error, event schedulerEvent) {
 	if callback == nil {
 		scheduler.signal(event)
 		return
@@ -694,7 +694,7 @@ func (scheduler *Scheduler[C]) runCallbackAndFireEvent(callback func(*Scheduler[
 	go scheduler.runAsyncCallbackAndFireEvent(callback, event)
 }
 
-func (scheduler *Scheduler[C]) runAsyncCallbackAndFireEvent(callback func(*Scheduler[C]) error, event Event) {
+func (scheduler *Scheduler[C]) runAsyncCallbackAndFireEvent(callback func(*Scheduler[C]) error, event schedulerEvent) {
 	err := callback(scheduler)
 	if err == nil {
 		scheduler.signal(event)
@@ -702,7 +702,7 @@ func (scheduler *Scheduler[C]) runAsyncCallbackAndFireEvent(callback func(*Sched
 	}
 
 	scheduler.Err = err
-	scheduler.signal(CrashedEvent)
+	scheduler.signal(crashedEvent)
 }
 
 func panicProofCallback[C any](callback func(*Scheduler[C]) error, target string) func(*Scheduler[C]) error {

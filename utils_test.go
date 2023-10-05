@@ -29,37 +29,37 @@ func defaultSchedulerOptions() *Options[any] {
 	}
 }
 
-func schedulerEventToString(event Event) string {
+func schedulerEventToString(event schedulerEvent) string {
 	switch event {
-	case PreparedEvent:
+	case preparedEvent:
 		return "Prepared"
-	case ScheduledEvent:
+	case scheduledEvent:
 		return "Scheduled"
-	case FinishedParallelEvent:
+	case finishedParallelEvent:
 		return "FinishedParallel"
-	case FinishedSerialEvent:
+	case finishedSerialEvent:
 		return "FinishedSerial"
-	case ExpiredFinishedSerialEvent:
+	case expiredFinishedSerialEvent:
 		return "ExpiredFinishedSerial"
-	case WakedEvent:
+	case wakedEvent:
 		return "Waked"
-	case ClosingEvent:
+	case closingEvent:
 		return "Closing"
-	case ErrorParallelEvent:
+	case errorParallelEvent:
 		return "Error"
-	case ErrorSerialEvent:
+	case errorSerialEvent:
 		return "ErrorSerial"
-	case ExpiredSerialEvent:
+	case expiredSerialEvent:
 		return "ExpiredSerial"
-	case OnErrorFinishedEvent:
+	case onErrorFinishedEvent:
 		return "OnErrorFinished"
-	case OnCrashFinishedEvent:
+	case onCrashFinishedEvent:
 		return "OnCrashFinished"
-	case RefreshEvent:
+	case refreshEvent:
 		return "Refresh"
-	case CrashedEvent:
+	case crashedEvent:
 		return "Crashed"
-	case ShutdownEvent:
+	case shutdownEvent:
 		return "Shutdown"
 	default:
 		return "Unknown"
@@ -91,7 +91,7 @@ func schedulerStatusToString(status Status) string {
 
 type mockedScheduler struct {
 	lock                     sync.Mutex
-	events                   []Event
+	events                   []schedulerEvent
 	removedExecutions        []*Execution
 	clock                    clockwork.Clock
 	beforeExecutionCallCount uint64
@@ -131,7 +131,7 @@ func (scheduler *mockedScheduler) getClock() clockwork.Clock {
 	return scheduler.clock
 }
 
-func (scheduler *mockedScheduler) signal(event Event) {
+func (scheduler *mockedScheduler) signal(event schedulerEvent) {
 	scheduler.events = append(scheduler.events, event)
 }
 
