@@ -14,8 +14,8 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-func defaultSchedulerOptions() *Options {
-	return &Options{
+func defaultSchedulerOptions[C any]() *Options[C] {
+	return &Options[C]{
 		ExecutionTimeout: time.Duration(0),
 		InactivityDelay:  time.Duration(0),
 		OnPrepare:        nil,
@@ -205,9 +205,9 @@ func executionStatusToString(status ExecutionStatus) string {
 	}
 }
 
-type testTimelinesExample struct {
+type testTimelinesExample[C any] struct {
 	t         *testing.T
-	scheduler *Scheduler
+	scheduler *Scheduler[C]
 	params    []testTimelineParams
 }
 
@@ -274,17 +274,17 @@ type testTimelineExpectations struct {
 	error      error
 }
 
-func newTestTimelinesExample(t *testing.T, scheduler *Scheduler, params []testTimelineParams) *testTimelinesExample {
+func newTestTimelinesExample[C any](t *testing.T, scheduler *Scheduler[C], params []testTimelineParams) *testTimelinesExample[C] {
 	scheduler.clock = clockwork.NewFakeClock()
 
-	return &testTimelinesExample{
+	return &testTimelinesExample[C]{
 		t:         t,
 		scheduler: scheduler,
 		params:    params,
 	}
 }
 
-func (timelines *testTimelinesExample) expects(expectations []testTimelineExpectations, expCalledAt map[int]time.Duration, expErroredAt map[int]time.Duration) {
+func (timelines *testTimelinesExample[C]) expects(expectations []testTimelineExpectations, expCalledAt map[int]time.Duration, expErroredAt map[int]time.Duration) {
 	var lock sync.Mutex
 
 	clock := timelines.scheduler.clock.(clockwork.FakeClock)

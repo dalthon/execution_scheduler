@@ -1,3 +1,11 @@
+// This Execution Scheduler package can be used to handle complex concurrency
+// executions in an easy fashion.
+//
+// The main entity is [Scheduler], which could be instantiated by [NewScheduler].
+//
+// Once we have a scheduler, we need to make it run with [Scheduler.Run], we can
+// asyncronously schedule executions with [Scheduler.Schedule] and force it to shutdown
+// with [Scheduler.Shutdown].
 package execution_scheduler
 
 import (
@@ -70,23 +78,24 @@ type schedulerInterface interface {
 	Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution
 }
 
-type Options struct {
+type Options[C any] struct {
 	ExecutionTimeout time.Duration
 	InactivityDelay  time.Duration
-	OnPrepare        func(scheduler *Scheduler) error
-	OnClosing        func(scheduler *Scheduler) error
-	OnError          func(scheduler *Scheduler) error
-	OnLeaveError     func(scheduler *Scheduler) error
-	OnInactive       func(scheduler *Scheduler) error
-	OnLeaveInactive  func(scheduler *Scheduler) error
-	OnCrash          func(scheduler *Scheduler)
-	OnClose          func(scheduler *Scheduler)
+	OnPrepare        func(scheduler *Scheduler[C]) error
+	OnClosing        func(scheduler *Scheduler[C]) error
+	OnError          func(scheduler *Scheduler[C]) error
+	OnLeaveError     func(scheduler *Scheduler[C]) error
+	OnInactive       func(scheduler *Scheduler[C]) error
+	OnLeaveInactive  func(scheduler *Scheduler[C]) error
+	OnCrash          func(scheduler *Scheduler[C])
+	OnClose          func(scheduler *Scheduler[C])
 }
 
-type Scheduler struct {
+type Scheduler[C any] struct {
 	Status          Status
 	Err             error
-	options         *Options
+	Context         C
+	options         *Options[C]
 	lock            sync.Mutex
 	parallelRunning uint32
 	serialRunning   uint32
@@ -101,9 +110,10 @@ type Scheduler struct {
 	startedAt       time.Time
 }
 
-func NewScheduler(options *Options, waitGroup *sync.WaitGroup) *Scheduler {
-	scheduler := &Scheduler{
+func NewScheduler[C any](options *Options[C], context C, waitGroup *sync.WaitGroup) *Scheduler[C] {
+	scheduler := &Scheduler[C]{
 		Status:          PendingStatus,
+		Context:         context,
 		options:         options,
 		parallelRunning: 0,
 		serialRunning:   0,
@@ -124,7 +134,7 @@ func NewScheduler(options *Options, waitGroup *sync.WaitGroup) *Scheduler {
 	return scheduler
 }
 
-func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
+func (scheduler *Scheduler[C]) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
@@ -153,16 +163,16 @@ func (scheduler *Scheduler) Schedule(handler func() error, errorHandler func(err
 	return execution
 }
 
-func (scheduler *Scheduler) Run() {
+func (scheduler *Scheduler[C]) Run() {
 	scheduler.startedAt = scheduler.clock.Now()
 	scheduler.runPrepareCallback()
 }
 
-func (scheduler *Scheduler) Shutdown() {
+func (scheduler *Scheduler[C]) Shutdown() {
 	scheduler.signal(ShutdownEvent)
 }
 
-func (scheduler *Scheduler) eventLoop() {
+func (scheduler *Scheduler[C]) eventLoop() {
 	for {
 		event := <-scheduler.events
 		scheduler.lock.Lock()
@@ -193,13 +203,13 @@ func (scheduler *Scheduler) eventLoop() {
 	}
 }
 
-func (scheduler *Scheduler) closedCallback(event Event) {
+func (scheduler *Scheduler[C]) closedCallback(event Event) {
 	if (event & callbackEventsMask) == callbackEventsMask {
 		scheduler.callbackRunning = false
 	}
 }
 
-func (scheduler *Scheduler) finishedExecutions(event Event) {
+func (scheduler *Scheduler[C]) finishedExecutions(event Event) {
 	switch event & finishMasks {
 	case parallelFinishMask:
 		scheduler.parallelRunning -= 1
@@ -211,7 +221,7 @@ func (scheduler *Scheduler) finishedExecutions(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) processEventOnPending(event Event) {
+func (scheduler *Scheduler[C]) processEventOnPending(event Event) {
 	switch event {
 	case PreparedEvent:
 		if scheduler.isScheduled() || scheduler.isRunning() {
@@ -226,7 +236,7 @@ func (scheduler *Scheduler) processEventOnPending(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) processEventOnActive(event Event) {
+func (scheduler *Scheduler[C]) processEventOnActive(event Event) {
 	switch event {
 	case ScheduledEvent:
 		scheduler.execute()
@@ -259,7 +269,7 @@ func (scheduler *Scheduler) processEventOnActive(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) processEventOnInactive(event Event) {
+func (scheduler *Scheduler[C]) processEventOnInactive(event Event) {
 	switch event {
 	case ScheduledEvent:
 		scheduler.leaveInactive()
@@ -276,7 +286,7 @@ func (scheduler *Scheduler) processEventOnInactive(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) processEventOnClosing(event Event) {
+func (scheduler *Scheduler[C]) processEventOnClosing(event Event) {
 	switch event {
 	case ClosingEvent:
 		if scheduler.isRunning() || scheduler.isScheduled() {
@@ -291,13 +301,13 @@ func (scheduler *Scheduler) processEventOnClosing(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) processEventOnClosed(event Event) {
+func (scheduler *Scheduler[C]) processEventOnClosed(event Event) {
 	if event == ScheduledEvent {
 		scheduler.cancelExecutions()
 	}
 }
 
-func (scheduler *Scheduler) processEventOnError(event Event) {
+func (scheduler *Scheduler[C]) processEventOnError(event Event) {
 	switch event {
 	case FinishedParallelEvent:
 		if !scheduler.callbackRunning && !scheduler.isRunning() {
@@ -337,7 +347,7 @@ func (scheduler *Scheduler) processEventOnError(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) processEventOnCrashed(event Event) {
+func (scheduler *Scheduler[C]) processEventOnCrashed(event Event) {
 	switch event {
 	case ScheduledEvent:
 		scheduler.cancelExecutions()
@@ -374,7 +384,7 @@ func (scheduler *Scheduler) processEventOnCrashed(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) processEventOnShutdown(event Event) {
+func (scheduler *Scheduler[C]) processEventOnShutdown(event Event) {
 	switch event {
 	case CrashedEvent:
 		scheduler.setStatus(CrashedStatus)
@@ -385,7 +395,7 @@ func (scheduler *Scheduler) processEventOnShutdown(event Event) {
 	}
 }
 
-func (scheduler *Scheduler) setStatus(status Status) {
+func (scheduler *Scheduler[C]) setStatus(status Status) {
 	if scheduler.Status == status {
 		return
 	}
@@ -415,7 +425,7 @@ func (scheduler *Scheduler) setStatus(status Status) {
 	}
 }
 
-func (scheduler *Scheduler) execute() {
+func (scheduler *Scheduler[C]) execute() {
 	if scheduler.currentSerial != nil && scheduler.currentSerial.kind == Critical {
 		return
 	}
@@ -438,7 +448,7 @@ func (scheduler *Scheduler) execute() {
 	}
 }
 
-func (scheduler *Scheduler) cancelExecutions() {
+func (scheduler *Scheduler[C]) cancelExecutions() {
 	err := newSchedulerCrashedError()
 
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
@@ -450,7 +460,7 @@ func (scheduler *Scheduler) cancelExecutions() {
 	}
 }
 
-func (scheduler *Scheduler) beforeExecutionCall(execution *Execution) {
+func (scheduler *Scheduler[C]) beforeExecutionCall(execution *Execution) {
 	if execution.kind == Parallel {
 		scheduler.parallelRunning += 1
 		return
@@ -460,7 +470,7 @@ func (scheduler *Scheduler) beforeExecutionCall(execution *Execution) {
 	scheduler.serialRunning += 1
 }
 
-func (scheduler *Scheduler) beforeExpireCall(execution *Execution) {
+func (scheduler *Scheduler[C]) beforeExpireCall(execution *Execution) {
 	if execution.kind == Parallel {
 		scheduler.parallelRunning += 1
 		return
@@ -469,19 +479,19 @@ func (scheduler *Scheduler) beforeExpireCall(execution *Execution) {
 	scheduler.serialRunning += 1
 }
 
-func (scheduler *Scheduler) getLock() *sync.Mutex {
+func (scheduler *Scheduler[C]) getLock() *sync.Mutex {
 	return &scheduler.lock
 }
 
-func (scheduler *Scheduler) getClock() clockwork.Clock {
+func (scheduler *Scheduler[C]) getClock() clockwork.Clock {
 	return scheduler.clock
 }
 
-func (scheduler *Scheduler) signal(event Event) {
+func (scheduler *Scheduler[C]) signal(event Event) {
 	scheduler.events <- event
 }
 
-func (scheduler *Scheduler) remove(execution *Execution) {
+func (scheduler *Scheduler[C]) remove(execution *Execution) {
 	if execution.kind == Parallel {
 		scheduler.parallelQueue.Remove(execution)
 	} else {
@@ -489,15 +499,15 @@ func (scheduler *Scheduler) remove(execution *Execution) {
 	}
 }
 
-func (scheduler *Scheduler) isRunning() bool {
+func (scheduler *Scheduler[C]) isRunning() bool {
 	return scheduler.parallelRunning > 0 || scheduler.serialRunning > 0
 }
 
-func (scheduler *Scheduler) isScheduled() bool {
+func (scheduler *Scheduler[C]) isScheduled() bool {
 	return scheduler.serialQueue.Size() > 0 || scheduler.parallelQueue.Size() > 0
 }
 
-func (scheduler *Scheduler) runOnInactive() {
+func (scheduler *Scheduler[C]) runOnInactive() {
 	if scheduler.options.InactivityDelay == time.Duration(0) {
 		scheduler.signal(WakedEvent)
 		return
@@ -506,7 +516,7 @@ func (scheduler *Scheduler) runOnInactive() {
 	go scheduler.inactiveWaiting()
 }
 
-func (scheduler *Scheduler) inactiveWaiting() {
+func (scheduler *Scheduler[C]) inactiveWaiting() {
 	inactivityStart := scheduler.clock.Now()
 	if scheduler.options.OnInactive != nil {
 
@@ -547,14 +557,14 @@ func (scheduler *Scheduler) inactiveWaiting() {
 	)
 }
 
-func (scheduler *Scheduler) runOnLeaveInactive() {
+func (scheduler *Scheduler[C]) runOnLeaveInactive() {
 	if scheduler.inactivityTimer != nil {
 		scheduler.inactivityTimer.Stop()
 		scheduler.inactivityTimer = nil
 	}
 }
 
-func (scheduler *Scheduler) wakeFromInactivity() {
+func (scheduler *Scheduler[C]) wakeFromInactivity() {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
@@ -571,7 +581,7 @@ func (scheduler *Scheduler) wakeFromInactivity() {
 	scheduler.leaveInactive()
 }
 
-func (scheduler *Scheduler) leaveInactive() {
+func (scheduler *Scheduler[C]) leaveInactive() {
 	if scheduler.callbackRunning {
 		return
 	}
@@ -603,7 +613,7 @@ func (scheduler *Scheduler) leaveInactive() {
 	}()
 }
 
-func (scheduler *Scheduler) runOnClose() {
+func (scheduler *Scheduler[C]) runOnClose() {
 	if scheduler.waitGroup != nil {
 		scheduler.waitGroup.Done()
 	}
@@ -613,12 +623,12 @@ func (scheduler *Scheduler) runOnClose() {
 	}
 }
 
-func (scheduler *Scheduler) runOnPrepare() {
+func (scheduler *Scheduler[C]) runOnPrepare() {
 	scheduler.Err = nil
 	scheduler.runPrepareCallback()
 }
 
-func (scheduler *Scheduler) runOnCrash() {
+func (scheduler *Scheduler[C]) runOnCrash() {
 	scheduler.callbackRunning = true
 	scheduler.cancelExecutions()
 
@@ -633,12 +643,12 @@ func (scheduler *Scheduler) runOnCrash() {
 	}()
 }
 
-func (scheduler *Scheduler) runOnShutdown() {
+func (scheduler *Scheduler[C]) runOnShutdown() {
 	scheduler.Err = newShutdownError()
 	scheduler.tryToClose()
 }
 
-func (scheduler *Scheduler) tryToClose() {
+func (scheduler *Scheduler[C]) tryToClose() {
 	if !scheduler.callbackRunning && !scheduler.isRunning() && !scheduler.isScheduled() {
 		scheduler.setStatus(ClosedStatus)
 	} else {
@@ -646,7 +656,7 @@ func (scheduler *Scheduler) tryToClose() {
 	}
 }
 
-func (scheduler *Scheduler) runOnLeaveErrorCallback() {
+func (scheduler *Scheduler[C]) runOnLeaveErrorCallback() {
 	scheduler.callbackRunning = true
 
 	if scheduler.options.OnLeaveError == nil {
@@ -660,22 +670,22 @@ func (scheduler *Scheduler) runOnLeaveErrorCallback() {
 	go scheduler.runAsyncCallbackAndFireEvent(panicProofCallback(scheduler.options.OnLeaveError, "OnLeaveError"), RefreshEvent)
 }
 
-func (scheduler *Scheduler) runOnErrorCallback() {
+func (scheduler *Scheduler[C]) runOnErrorCallback() {
 	scheduler.callbackRunning = true
 	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnError, "OnError"), OnErrorFinishedEvent)
 }
 
-func (scheduler *Scheduler) runPrepareCallback() {
+func (scheduler *Scheduler[C]) runPrepareCallback() {
 	scheduler.callbackRunning = true
 	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnPrepare, "OnPrepare"), PreparedEvent)
 }
 
-func (scheduler *Scheduler) runOnClosingCallback() {
+func (scheduler *Scheduler[C]) runOnClosingCallback() {
 	scheduler.callbackRunning = true
 	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.OnClosing, "OnClosing"), ClosingEvent)
 }
 
-func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) error, event Event) {
+func (scheduler *Scheduler[C]) runCallbackAndFireEvent(callback func(*Scheduler[C]) error, event Event) {
 	if callback == nil {
 		scheduler.signal(event)
 		return
@@ -684,7 +694,7 @@ func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) er
 	go scheduler.runAsyncCallbackAndFireEvent(callback, event)
 }
 
-func (scheduler *Scheduler) runAsyncCallbackAndFireEvent(callback func(*Scheduler) error, event Event) {
+func (scheduler *Scheduler[C]) runAsyncCallbackAndFireEvent(callback func(*Scheduler[C]) error, event Event) {
 	err := callback(scheduler)
 	if err == nil {
 		scheduler.signal(event)
@@ -695,12 +705,12 @@ func (scheduler *Scheduler) runAsyncCallbackAndFireEvent(callback func(*Schedule
 	scheduler.signal(CrashedEvent)
 }
 
-func panicProofCallback(callback func(*Scheduler) error, target string) func(*Scheduler) error {
+func panicProofCallback[C any](callback func(*Scheduler[C]) error, target string) func(*Scheduler[C]) error {
 	if callback == nil {
 		return nil
 	}
 
-	return func(scheduler *Scheduler) error {
+	return func(scheduler *Scheduler[C]) error {
 		errorChannel := make(chan error)
 
 		go func() {
