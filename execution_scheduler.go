@@ -579,8 +579,6 @@ func (scheduler *Scheduler) leaveInactive() {
 	if scheduler.options.onLeaveInactive == nil {
 		if scheduler.isScheduled() || scheduler.isRunning() {
 			scheduler.setStatus(ActiveStatus)
-		} else {
-			scheduler.setStatus(ClosingStatus)
 		}
 		return
 	}
