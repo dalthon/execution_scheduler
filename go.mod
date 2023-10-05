@@ -1,6 +1,6 @@
 module github.com/pagarme/execution_scheduler
 
-go 1.20
+go 1.21
 
 replace github.com/pagarme/execution_scheduler => ./execution_scheduler
 
