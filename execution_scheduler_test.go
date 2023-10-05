@@ -29,7 +29,7 @@ func TestSchedulerEmptyTimeline(t *testing.T) {
 
 func TestSchedulerMinimalSerialTimeline(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -54,7 +54,7 @@ func TestSchedulerMinimalSerialTimeline(t *testing.T) {
 
 func TestSchedulerMinimalParallelTimeline(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -79,8 +79,8 @@ func TestSchedulerMinimalParallelTimeline(t *testing.T) {
 
 func TestSchedulerTimeout(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -97,7 +97,7 @@ func TestSchedulerTimeout(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	preparedAt := []time.Duration{}
-	options.onPrepare = func(scheduler *Scheduler) error {
+	options.OnPrepare = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(4 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
@@ -105,7 +105,7 @@ func TestSchedulerTimeout(t *testing.T) {
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(4 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -113,7 +113,7 @@ func TestSchedulerTimeout(t *testing.T) {
 	}
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(4 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -277,7 +277,7 @@ func TestSchedulerTimeout(t *testing.T) {
 
 func TestSchedulerAllPendingTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -292,7 +292,7 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	preparedAt := []time.Duration{}
-	options.onPrepare = func(scheduler *Scheduler) error {
+	options.OnPrepare = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
@@ -304,14 +304,14 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
 		return nil
 	}
 
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 	}
 
@@ -449,7 +449,7 @@ func TestSchedulerAllPendingTransitions(t *testing.T) {
 
 func TestSchedulerSerialExpiration(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.executionTimeout = 3 * time.Second
+	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -464,7 +464,7 @@ func TestSchedulerSerialExpiration(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	preparedAt := []time.Duration{}
-	options.onPrepare = func(scheduler *Scheduler) error {
+	options.OnPrepare = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(6 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
@@ -472,7 +472,7 @@ func TestSchedulerSerialExpiration(t *testing.T) {
 	}
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(3 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -584,7 +584,7 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	preparedAt := []time.Duration{}
-	options.onPrepare = func(scheduler *Scheduler) error {
+	options.OnPrepare = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
@@ -592,7 +592,7 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -603,7 +603,7 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 		return nil
 	}
 
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 	}
 
@@ -699,7 +699,7 @@ func TestSchedulerAllErrorTransitions(t *testing.T) {
 
 func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -713,7 +713,7 @@ func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -721,14 +721,14 @@ func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
 		return errors.New("Should not be here!")
 	}
 
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 	}
 
@@ -794,7 +794,7 @@ func TestSchedulerOnErrorOnCallabckIgnoresLeaveError(t *testing.T) {
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -855,7 +855,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -914,7 +914,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -932,7 +932,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T)
 	startedAt := scheduler.clock.Now()
 
 	erroredAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		erroredAt = append(erroredAt, scheduler.clock.Since(startedAt))
 
@@ -940,7 +940,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T)
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -1072,7 +1072,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithCallbacks(t *testing.T)
 
 func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -1090,7 +1090,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *te
 	startedAt := scheduler.clock.Now()
 
 	erroredAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		erroredAt = append(erroredAt, scheduler.clock.Since(startedAt))
 
@@ -1098,7 +1098,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *te
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -1232,7 +1232,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithErrorAndCallbacks(t *te
 
 func TestSchedulerCrashedWithoutLeaveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -1245,7 +1245,7 @@ func TestSchedulerCrashedWithoutLeaveCallback(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -1253,7 +1253,7 @@ func TestSchedulerCrashedWithoutLeaveCallback(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -1332,7 +1332,7 @@ func TestSchedulerCrashedFromPending(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	preparedAt := []time.Duration{}
-	options.onPrepare = func(scheduler *Scheduler) error {
+	options.OnPrepare = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
@@ -1340,7 +1340,7 @@ func TestSchedulerCrashedFromPending(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(3 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -1406,7 +1406,7 @@ func TestSchedulerCrashedFromPending(t *testing.T) {
 
 func TestSchedulerCrashedFromError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -1420,7 +1420,7 @@ func TestSchedulerCrashedFromError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -1428,7 +1428,7 @@ func TestSchedulerCrashedFromError(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(2 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -1505,7 +1505,7 @@ func TestSchedulerCrashedFromError(t *testing.T) {
 
 func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -1521,7 +1521,7 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -1529,7 +1529,7 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(3 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -1616,7 +1616,7 @@ func TestSchedulerCrashedFromErrorTwice(t *testing.T) {
 
 func TestSchedulerCrashedWaitingRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -1630,7 +1630,7 @@ func TestSchedulerCrashedWaitingRunning(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -1638,7 +1638,7 @@ func TestSchedulerCrashedWaitingRunning(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(2 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -1722,7 +1722,7 @@ func TestSchedulerCrashedWaitingRunning(t *testing.T) {
 
 func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -1738,7 +1738,7 @@ func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -1746,7 +1746,7 @@ func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(3 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -1839,7 +1839,7 @@ func TestSchedulerCrashedWaitingRunningError(t *testing.T) {
 
 func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -1854,7 +1854,7 @@ func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(3 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -1862,7 +1862,7 @@ func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(3 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -1961,7 +1961,7 @@ func TestSchedulerCrashedFromErrorWithOnError(t *testing.T) {
 
 func TestSchedulerCrashedFromClosing(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -1974,7 +1974,7 @@ func TestSchedulerCrashedFromClosing(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -1982,7 +1982,7 @@ func TestSchedulerCrashedFromClosing(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(3 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -2058,7 +2058,7 @@ func TestSchedulerCrashedFromClosing(t *testing.T) {
 
 func TestSchedulerAllInactiveTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 3 * time.Second
+	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2126,7 +2126,7 @@ func TestSchedulerAllInactiveTransitions(t *testing.T) {
 
 func TestSchedulerClosed(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2139,7 +2139,7 @@ func TestSchedulerClosed(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	closedAt := []time.Duration{}
-	options.onClose = func(scheduler *Scheduler) {
+	options.OnClose = func(scheduler *Scheduler) {
 		closedAt = append(closedAt, scheduler.clock.Since(startedAt))
 	}
 
@@ -2201,7 +2201,7 @@ func TestSchedulerClosed(t *testing.T) {
 
 func TestSchedulerAllActiveTransitions(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 3 * time.Second
+	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -2218,7 +2218,7 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -2226,7 +2226,7 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 	}
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(3 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -2360,7 +2360,7 @@ func TestSchedulerAllActiveTransitions(t *testing.T) {
 
 func TestSchedulerFromClosingToCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2373,7 +2373,7 @@ func TestSchedulerFromClosingToCrashed(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(3 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -2385,7 +2385,7 @@ func TestSchedulerFromClosingToCrashed(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -2494,7 +2494,7 @@ func TestSchedulerFromClosingToCrashed(t *testing.T) {
 
 func TestSchedulerFromClosingToClosed(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2507,7 +2507,7 @@ func TestSchedulerFromClosingToClosed(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(3 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -2607,7 +2607,7 @@ func TestSchedulerFromClosingToClosed(t *testing.T) {
 func TestSchedulerWaitForWaitGroup(t *testing.T) {
 	var waitGroup sync.WaitGroup
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, &waitGroup)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2680,7 +2680,7 @@ func TestSchedulerWaitForWaitGroup(t *testing.T) {
 
 func TestSchedulerShutdownTwice(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2756,7 +2756,7 @@ func TestSchedulerShutdownOnPending(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	preparedAt := []time.Duration{}
-	options.onPrepare = func(scheduler *Scheduler) error {
+	options.OnPrepare = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(4 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
@@ -2816,7 +2816,7 @@ func TestSchedulerShutdownOnPending(t *testing.T) {
 
 func TestSchedulerShutdownOnActive(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2875,7 +2875,7 @@ func TestSchedulerShutdownOnActive(t *testing.T) {
 
 func TestSchedulerShutdownOnInactive(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 3 * time.Second
+	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2938,7 +2938,7 @@ func TestSchedulerShutdownOnInactive(t *testing.T) {
 
 func TestSchedulerShutdownOnClosing(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -2951,7 +2951,7 @@ func TestSchedulerShutdownOnClosing(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(4 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -3032,7 +3032,7 @@ func TestSchedulerShutdownOnClosing(t *testing.T) {
 
 func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -3048,7 +3048,7 @@ func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -3122,7 +3122,7 @@ func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 
 func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -3137,7 +3137,7 @@ func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -3145,7 +3145,7 @@ func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(3 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -3227,7 +3227,7 @@ func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
 
 func TestSchedulerShutdownOnErrorWhileRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -3300,7 +3300,7 @@ func TestSchedulerShutdownOnErrorWhileRunning(t *testing.T) {
 
 func TestSchedulerShutdownOnErrorWhileCallbackRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -3316,7 +3316,7 @@ func TestSchedulerShutdownOnErrorWhileCallbackRunning(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(4 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -3395,7 +3395,7 @@ func TestSchedulerShutdownOnErrorWhileCallbackRunning(t *testing.T) {
 
 func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -3411,7 +3411,7 @@ func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(4 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -3490,7 +3490,7 @@ func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
 
 func TestSchedulerSerialExecutionsRunsSerially(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -3578,7 +3578,7 @@ func TestSchedulerSerialExecutionsRunsSerially(t *testing.T) {
 
 func TestSchedulerSerialExecutionsRespectsPriority(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -3673,8 +3673,8 @@ func TestSchedulerSerialExecutionsRespectsPriority(t *testing.T) {
 
 func TestSchedulerSerialExecutionExpireWhileRunning(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 3 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -3749,8 +3749,8 @@ func TestSchedulerSerialExecutionExpireWhileRunning(t *testing.T) {
 
 func TestSchedulerSerialExecutionLeaveExpiredToInactive(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.executionTimeout = 3 * time.Second
-	options.inactivityDelay = 3 * time.Second
+	options.ExecutionTimeout = 3 * time.Second
+	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -3849,8 +3849,8 @@ func TestSchedulerSerialExecutionLeaveExpiredToInactive(t *testing.T) {
 
 func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 3 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -3872,7 +3872,7 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(3 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -4090,8 +4090,8 @@ func TestSchedulerSerialExecutionDuringError(t *testing.T) {
 
 func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 3 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -4107,7 +4107,7 @@ func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -4178,8 +4178,8 @@ func TestSchedulerSerialFinishWhileCrashed(t *testing.T) {
 
 func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 3 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 3 * time.Second
 	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -4193,7 +4193,7 @@ func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -4263,8 +4263,8 @@ func TestSchedulerSerialErrorsWhileCrashed(t *testing.T) {
 
 func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 2 * time.Second
 	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -4279,7 +4279,7 @@ func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -4362,8 +4362,8 @@ func TestSchedulerCrashedWaitsForSerialExpirationFinish(t *testing.T) {
 
 func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 2 * time.Second
 	errorHandler := testErrorHandlerBuilder()
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
@@ -4378,7 +4378,7 @@ func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -4461,7 +4461,7 @@ func TestSchedulerCrashedWaitsForSerialExpirationError(t *testing.T) {
 
 func TestSchedulerCriticalExecutionsRunsSerially(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -4549,7 +4549,7 @@ func TestSchedulerCriticalExecutionsRunsSerially(t *testing.T) {
 
 func TestSchedulerCriticalExecutionsRespectsPriority(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -4644,7 +4644,7 @@ func TestSchedulerCriticalExecutionsRespectsPriority(t *testing.T) {
 
 func TestSchedulerCriticalExecutionsSchedulesAndWaitsParallels(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -4758,7 +4758,7 @@ func TestSchedulerCriticalExecutionsSchedulesAndWaitsParallels(t *testing.T) {
 
 func TestSchedulerHandlerPanic(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -4773,7 +4773,7 @@ func TestSchedulerHandlerPanic(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -4861,7 +4861,7 @@ func TestSchedulerHandlerPanic(t *testing.T) {
 
 func TestSchedulerOnInactiveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 3 * time.Second
+	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -4877,7 +4877,7 @@ func TestSchedulerOnInactiveCallback(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	inactiveAt := []time.Duration{}
-	options.onInactive = func(scheduler *Scheduler) error {
+	options.OnInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(time.Duration(1+len(inactiveAt)) * time.Second)
 		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
 
@@ -4889,7 +4889,7 @@ func TestSchedulerOnInactiveCallback(t *testing.T) {
 	}
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -4897,7 +4897,7 @@ func TestSchedulerOnInactiveCallback(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -5084,7 +5084,7 @@ func TestSchedulerOnInactiveCallback(t *testing.T) {
 
 func TestSchedulerShutdownOnInactiveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -5097,7 +5097,7 @@ func TestSchedulerShutdownOnInactiveCallback(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	inactiveAt := []time.Duration{}
-	options.onInactive = func(scheduler *Scheduler) error {
+	options.OnInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(3 * time.Second)
 		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
 
@@ -5164,8 +5164,8 @@ func TestSchedulerShutdownOnInactiveCallback(t *testing.T) {
 
 func TestSchedulerTimeoutWhileOnInactiveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -5181,7 +5181,7 @@ func TestSchedulerTimeoutWhileOnInactiveCallback(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	inactiveAt := []time.Duration{}
-	options.onInactive = func(scheduler *Scheduler) error {
+	options.OnInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(5 * time.Second)
 		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
 
@@ -5189,7 +5189,7 @@ func TestSchedulerTimeoutWhileOnInactiveCallback(t *testing.T) {
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -5324,8 +5324,8 @@ func TestSchedulerTimeoutWhileOnInactiveCallback(t *testing.T) {
 
 func TestSchedulerTimeoutAfterOnInactiveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 5 * time.Second
-	options.executionTimeout = 2 * time.Second
+	options.InactivityDelay = 5 * time.Second
+	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -5341,7 +5341,7 @@ func TestSchedulerTimeoutAfterOnInactiveCallback(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	inactiveAt := []time.Duration{}
-	options.onInactive = func(scheduler *Scheduler) error {
+	options.OnInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
 
@@ -5447,7 +5447,7 @@ func TestSchedulerTimeoutAfterOnInactiveCallback(t *testing.T) {
 
 func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 3 * time.Second
+	options.InactivityDelay = 3 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -5463,7 +5463,7 @@ func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftInactiveAt := []time.Duration{}
-	options.onLeaveInactive = func(scheduler *Scheduler) error {
+	options.OnLeaveInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(time.Duration(1+len(leftInactiveAt)) * time.Second)
 		leftInactiveAt = append(leftInactiveAt, scheduler.clock.Since(startedAt))
 
@@ -5475,7 +5475,7 @@ func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 	}
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(2 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -5483,7 +5483,7 @@ func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -5650,8 +5650,8 @@ func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 
 func TestSchedulerTimeoutOnLeaveInactiveCallback(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
-	options.executionTimeout = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
+	options.ExecutionTimeout = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -5668,7 +5668,7 @@ func TestSchedulerTimeoutOnLeaveInactiveCallback(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftInactiveAt := []time.Duration{}
-	options.onLeaveInactive = func(scheduler *Scheduler) error {
+	options.OnLeaveInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(5 * time.Second)
 		leftInactiveAt = append(leftInactiveAt, scheduler.clock.Since(startedAt))
 
@@ -5676,7 +5676,7 @@ func TestSchedulerTimeoutOnLeaveInactiveCallback(t *testing.T) {
 	}
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -5807,7 +5807,7 @@ func TestSchedulerHandlePanicOnPrepare(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	preparedAt := []time.Duration{}
-	options.onPrepare = func(scheduler *Scheduler) error {
+	options.OnPrepare = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
 
@@ -5815,7 +5815,7 @@ func TestSchedulerHandlePanicOnPrepare(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -5857,7 +5857,7 @@ func TestSchedulerHandlePanicOnPrepare(t *testing.T) {
 
 func TestSchedulerHandlePanicOnClosing(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -5870,7 +5870,7 @@ func TestSchedulerHandlePanicOnClosing(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	closingAt := []time.Duration{}
-	options.onClosing = func(scheduler *Scheduler) error {
+	options.OnClosing = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
 
@@ -5878,7 +5878,7 @@ func TestSchedulerHandlePanicOnClosing(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -5942,7 +5942,7 @@ func TestSchedulerHandlePanicOnClosing(t *testing.T) {
 
 func TestSchedulerHandlePanicOnError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -5956,7 +5956,7 @@ func TestSchedulerHandlePanicOnError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	errorAt := []time.Duration{}
-	options.onError = func(scheduler *Scheduler) error {
+	options.OnError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
 
@@ -5964,7 +5964,7 @@ func TestSchedulerHandlePanicOnError(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -6025,7 +6025,7 @@ func TestSchedulerHandlePanicOnError(t *testing.T) {
 
 func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	errorHandler := testErrorHandlerBuilder()
 	timeline := newTestTimelinesExample(
@@ -6039,7 +6039,7 @@ func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftErrorAt := []time.Duration{}
-	options.onLeaveError = func(scheduler *Scheduler) error {
+	options.OnLeaveError = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
 
@@ -6047,7 +6047,7 @@ func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -6108,7 +6108,7 @@ func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
 
 func TestSchedulerHandlePanicOnInactive(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 2 * time.Second
+	options.InactivityDelay = 2 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -6119,7 +6119,7 @@ func TestSchedulerHandlePanicOnInactive(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	inactiveAt := []time.Duration{}
-	options.onInactive = func(scheduler *Scheduler) error {
+	options.OnInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
 
@@ -6127,7 +6127,7 @@ func TestSchedulerHandlePanicOnInactive(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
@@ -6169,7 +6169,7 @@ func TestSchedulerHandlePanicOnInactive(t *testing.T) {
 
 func TestSchedulerHandlePanicOnLeaveInactive(t *testing.T) {
 	options := defaultSchedulerOptions()
-	options.inactivityDelay = 1 * time.Second
+	options.InactivityDelay = 1 * time.Second
 	scheduler := NewScheduler(options, nil)
 	timeline := newTestTimelinesExample(
 		t,
@@ -6180,7 +6180,7 @@ func TestSchedulerHandlePanicOnLeaveInactive(t *testing.T) {
 	startedAt := scheduler.clock.Now()
 
 	leftInactiveAt := []time.Duration{}
-	options.onLeaveInactive = func(scheduler *Scheduler) error {
+	options.OnLeaveInactive = func(scheduler *Scheduler) error {
 		scheduler.clock.Sleep(1 * time.Second)
 		leftInactiveAt = append(leftInactiveAt, scheduler.clock.Since(startedAt))
 
@@ -6188,7 +6188,7 @@ func TestSchedulerHandlePanicOnLeaveInactive(t *testing.T) {
 	}
 
 	crashedAt := []time.Duration{}
-	options.onCrash = func(scheduler *Scheduler) {
+	options.OnCrash = func(scheduler *Scheduler) {
 		scheduler.clock.Sleep(1 * time.Second)
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}

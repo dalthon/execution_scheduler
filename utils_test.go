@@ -16,16 +16,16 @@ import (
 
 func defaultSchedulerOptions() *SchedulerOptions {
 	return &SchedulerOptions{
-		executionTimeout: time.Duration(0),
-		inactivityDelay:  time.Duration(0),
-		onPrepare:        nil,
-		onClosing:        nil,
-		onInactive:       nil,
-		onLeaveInactive:  nil,
-		onError:          nil,
-		onLeaveError:     nil,
-		onCrash:          nil,
-		onClose:          nil,
+		ExecutionTimeout: time.Duration(0),
+		InactivityDelay:  time.Duration(0),
+		OnPrepare:        nil,
+		OnClosing:        nil,
+		OnInactive:       nil,
+		OnLeaveInactive:  nil,
+		OnError:          nil,
+		OnLeaveError:     nil,
+		OnCrash:          nil,
+		OnClose:          nil,
 	}
 }
 
