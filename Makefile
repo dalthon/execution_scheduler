@@ -7,7 +7,7 @@ DOCKER_RUN := docker run --rm -v $(DOCKER_WORKDIR):/app -it
 DOCKER_BIN := $(shell which docker)
 
 define docker_run
-	if [ -n "$(DOCKER_BIN)" ]; then echo "Running on $1 container..." && $(DOCKER_RUN) --name $1-$2 $1 $3; else $3; fi;
+	if [ -n "$(DOCKER_BIN)" ]; then echo "Running on $1 container..." && $(DOCKER_RUN) --name $1-$2 $4 $1 $3; else $3; fi;
 endef
 
 default: help ## Defaults to help
@@ -47,6 +47,10 @@ cover: make-cover ## Runs tests with cover and output its result
 
 stop-%: ## Stops container
 	docker rm -f $(IMAGE_NAME)-$*
+
+docs: ## Runs godoc server
+	@$(call docker_run,$(IMAGE_NAME),$@,godoc -http=:6060,-p 6060:6060)
+.PHONY: docs
 
 make-cover:
 	@mkdir -p tmp
