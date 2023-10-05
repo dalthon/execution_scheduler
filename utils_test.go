@@ -14,8 +14,8 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-func defaultSchedulerOptions() *SchedulerOptions {
-	return &SchedulerOptions{
+func defaultSchedulerOptions() *Options {
+	return &Options{
 		ExecutionTimeout: time.Duration(0),
 		InactivityDelay:  time.Duration(0),
 		OnPrepare:        nil,
@@ -29,7 +29,7 @@ func defaultSchedulerOptions() *SchedulerOptions {
 	}
 }
 
-func schedulerEventToString(event ExecutionEvent) string {
+func schedulerEventToString(event Event) string {
 	switch event {
 	case PreparedEvent:
 		return "Prepared"
@@ -66,7 +66,7 @@ func schedulerEventToString(event ExecutionEvent) string {
 	}
 }
 
-func schedulerStatusToString(status SchedulerStatus) string {
+func schedulerStatusToString(status Status) string {
 	switch status {
 	case PendingStatus:
 		return "Pending"
@@ -91,7 +91,7 @@ func schedulerStatusToString(status SchedulerStatus) string {
 
 type mockedScheduler struct {
 	lock                     sync.Mutex
-	events                   []ExecutionEvent
+	events                   []Event
 	removedExecutions        []*Execution
 	clock                    clockwork.Clock
 	beforeExecutionCallCount uint64
@@ -131,7 +131,7 @@ func (scheduler *mockedScheduler) getClock() clockwork.Clock {
 	return scheduler.clock
 }
 
-func (scheduler *mockedScheduler) signal(event ExecutionEvent) {
+func (scheduler *mockedScheduler) signal(event Event) {
 	scheduler.events = append(scheduler.events, event)
 }
 
@@ -269,7 +269,7 @@ const (
 
 type testTimelineExpectations struct {
 	at         int
-	status     SchedulerStatus
+	status     Status
 	executions []testExecutionStatus
 	error      error
 }

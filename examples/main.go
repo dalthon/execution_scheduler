@@ -19,7 +19,7 @@ func main() {
 	var waitGroup sync.WaitGroup
 
 	// Set all possible options
-	options := &s.SchedulerOptions{
+	options := &s.Options{
 		ExecutionTimeout: 4 * time.Second,
 		InactivityDelay:  5 * time.Second,
 		OnPrepare:        delayedErrorCallback("OnPrepare"),
