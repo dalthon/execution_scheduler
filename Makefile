@@ -52,5 +52,5 @@ make-cover:
 .PHONY: make-cover
 
 debug: ## Runs debug/main.go
-	@$(call docker_run,$(IMAGE_NAME),go run debug/main.go)
+	@$(call docker_run,$(IMAGE_NAME),$@,go run debug/main.go)
 .PHONY: debug
