@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	s "github.com/pagarme/execution_scheduler"
+	s "github.com/dalthon/execution_scheduler"
 )
 
 var startedAt time.Time
