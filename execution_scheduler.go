@@ -514,7 +514,7 @@ func (scheduler *Scheduler) inactiveWaiting() {
 		scheduler.callbackRunning = true
 		scheduler.lock.Unlock()
 
-		err := scheduler.options.onInactive(scheduler)
+		err := (panicProofCallback(scheduler.options.onInactive, "OnInactive"))(scheduler)
 
 		scheduler.lock.Lock()
 		scheduler.callbackRunning = false
@@ -522,6 +522,10 @@ func (scheduler *Scheduler) inactiveWaiting() {
 			scheduler.signal(WakedEvent)
 			scheduler.lock.Unlock()
 			return
+		}
+
+		if err != nil && scheduler.Err == nil {
+			scheduler.Err = err
 		}
 		scheduler.lock.Unlock()
 
@@ -584,7 +588,7 @@ func (scheduler *Scheduler) leaveInactive() {
 	scheduler.callbackRunning = true
 
 	go func() {
-		err := scheduler.options.onLeaveInactive(scheduler)
+		err := (panicProofCallback(scheduler.options.onLeaveInactive, "OnLeaveInactive"))(scheduler)
 
 		scheduler.lock.Lock()
 		defer scheduler.lock.Unlock()
@@ -593,6 +597,9 @@ func (scheduler *Scheduler) leaveInactive() {
 		if err == nil {
 			scheduler.signal(WakedEvent)
 		} else {
+			if scheduler.Err == nil {
+				scheduler.Err = err
+			}
 			scheduler.signal(CrashedEvent)
 		}
 	}()
@@ -652,22 +659,22 @@ func (scheduler *Scheduler) runOnLeaveErrorCallback() {
 		return
 	}
 
-	go scheduler.runAsyncCallbackAndFireEvent(scheduler.options.onLeaveError, RefreshEvent)
+	go scheduler.runAsyncCallbackAndFireEvent(panicProofCallback(scheduler.options.onLeaveError, "OnLeaveError"), RefreshEvent)
 }
 
 func (scheduler *Scheduler) runOnErrorCallback() {
 	scheduler.callbackRunning = true
-	scheduler.runCallbackAndFireEvent(scheduler.options.onError, OnErrorFinishedEvent)
+	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.onError, "OnError"), OnErrorFinishedEvent)
 }
 
 func (scheduler *Scheduler) runPrepareCallback() {
 	scheduler.callbackRunning = true
-	scheduler.runCallbackAndFireEvent(scheduler.options.onPrepare, PreparedEvent)
+	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.onPrepare, "OnPrepare"), PreparedEvent)
 }
 
 func (scheduler *Scheduler) runOnClosingCallback() {
 	scheduler.callbackRunning = true
-	scheduler.runCallbackAndFireEvent(scheduler.options.onClosing, ClosingEvent)
+	scheduler.runCallbackAndFireEvent(panicProofCallback(scheduler.options.onClosing, "OnClosing"), ClosingEvent)
 }
 
 func (scheduler *Scheduler) runCallbackAndFireEvent(callback func(*Scheduler) error, event ExecutionEvent) {
@@ -688,4 +695,27 @@ func (scheduler *Scheduler) runAsyncCallbackAndFireEvent(callback func(*Schedule
 
 	scheduler.Err = err
 	scheduler.signal(CrashedEvent)
+}
+
+func panicProofCallback(callback func(*Scheduler) error, target string) func(*Scheduler) error {
+	if callback == nil {
+		return nil
+	}
+
+	return func(scheduler *Scheduler) error {
+		errorChannel := make(chan error)
+
+		go func() {
+			defer func() {
+				if recovery := recover(); recovery != nil {
+					errorChannel <- NewPanicError(target, recovery)
+				}
+			}()
+
+			err := callback(scheduler)
+			errorChannel <- err
+		}()
+
+		return <-errorChannel
+	}
 }

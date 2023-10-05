@@ -5038,11 +5038,13 @@ func TestSchedulerOnInactiveCallback(t *testing.T) {
 				at:         26,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				error:      errors.New("Its enough!"),
 			},
 			{
 				at:         27,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				error:      errors.New("Its enough!"),
 			},
 		},
 		map[int]time.Duration{
@@ -5607,11 +5609,13 @@ func TestSchedulerOnLeaveInactiveCallback(t *testing.T) {
 				at:         23,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				error:      errors.New("Its enough!"),
 			},
 			{
 				at:         24,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF, _esF},
+				error:      errors.New("Its enough!"),
 			},
 		},
 		map[int]time.Duration{
@@ -5788,5 +5792,443 @@ func TestSchedulerTimeoutOnLeaveInactiveCallback(t *testing.T) {
 	expectedLeftErrorAt := []time.Duration{10 * time.Second}
 	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
 		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
+	}
+}
+
+func TestSchedulerHandlePanicOnPrepare(t *testing.T) {
+	options := defaultSchedulerOptions()
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	preparedAt := []time.Duration{}
+	options.onPrepare = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		preparedAt = append(preparedAt, scheduler.clock.Since(startedAt))
+
+		panic("Something went really bad, but I am recovered.")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(1 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     PendingStatus,
+				executions: []testExecutionStatus{},
+			},
+			{
+				at:         1,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{},
+				error:      NewPanicError("OnPrepare", "Something went really bad, but I am recovered."),
+			},
+			{
+				at:         2,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{},
+				error:      NewPanicError("OnPrepare", "Something went really bad, but I am recovered."),
+			},
+		},
+		map[int]time.Duration{},
+		map[int]time.Duration{},
+	)
+
+	expectedPreparedAt := []time.Duration{1 * time.Second}
+	if !reflect.DeepEqual(preparedAt, expectedPreparedAt) {
+		t.Fatalf("OnPrepare should have finished at %v, but was finished at %v", expectedPreparedAt, preparedAt)
+	}
+
+	expectedCrashedAt := []time.Duration{2 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrash should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+}
+
+func TestSchedulerHandlePanicOnClosing(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: testDummyHandler(), errorHandler: testDummyHandler()},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	closingAt := []time.Duration{}
+	options.onClosing = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		closingAt = append(closingAt, scheduler.clock.Since(startedAt))
+
+		panic("Something went really bad, but I am recovered.")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(1 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         2,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         3,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         4,
+				status:     ClosingStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         5,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewPanicError("OnClosing", "Something went really bad, but I am recovered."),
+			},
+			{
+				at:         6,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewPanicError("OnClosing", "Something went really bad, but I am recovered."),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{},
+	)
+
+	expectedClosingAt := []time.Duration{5 * time.Second}
+	if !reflect.DeepEqual(closingAt, expectedClosingAt) {
+		t.Fatalf("OnClosing should have finished at %v, but was finished at %v", expectedClosingAt, closingAt)
+	}
+
+	expectedCrashedAt := []time.Duration{6 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrash should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+}
+
+func TestSchedulerHandlePanicOnError(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	errorHandler := testErrorHandlerBuilder()
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	errorAt := []time.Duration{}
+	options.onError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		errorAt = append(errorAt, scheduler.clock.Since(startedAt))
+
+		panic("Something went really bad, but I am recovered.")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(1 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         4,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewPanicError("OnError", "Something went really bad, but I am recovered."),
+			},
+			{
+				at:         5,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewPanicError("OnError", "Something went really bad, but I am recovered."),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+		},
+	)
+
+	expectedErrorAt := []time.Duration{4 * time.Second}
+	if !reflect.DeepEqual(errorAt, expectedErrorAt) {
+		t.Fatalf("OnError should have finished at %v, but was finished at %v", expectedErrorAt, errorAt)
+	}
+
+	expectedCrashedAt := []time.Duration{5 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrash should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+}
+
+func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	errorHandler := testErrorHandlerBuilder()
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{
+			{delay: 1, kind: Parallel, priority: 0, handler: errorHandler(1), errorHandler: errorHandler(1)},
+		},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	leftErrorAt := []time.Duration{}
+	options.onLeaveError = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		leftErrorAt = append(leftErrorAt, scheduler.clock.Since(startedAt))
+
+		panic("Something went really bad, but I am recovered.")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(1 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{_esP},
+			},
+			{
+				at:         1,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         2,
+				status:     ActiveStatus,
+				executions: []testExecutionStatus{_esR},
+			},
+			{
+				at:         3,
+				status:     ErrorStatus,
+				executions: []testExecutionStatus{_esF},
+			},
+			{
+				at:         4,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewPanicError("OnLeaveError", "Something went really bad, but I am recovered."),
+			},
+			{
+				at:         5,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{_esF},
+				error:      NewPanicError("OnLeaveError", "Something went really bad, but I am recovered."),
+			},
+		},
+		map[int]time.Duration{
+			0: 1 * time.Second,
+		},
+		map[int]time.Duration{
+			0: 2 * time.Second,
+		},
+	)
+
+	expectedLeftErrorAt := []time.Duration{4 * time.Second}
+	if !reflect.DeepEqual(leftErrorAt, expectedLeftErrorAt) {
+		t.Fatalf("OnLeaveError should have finished at %v, but was finished at %v", expectedLeftErrorAt, leftErrorAt)
+	}
+
+	expectedCrashedAt := []time.Duration{5 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrash should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+}
+
+func TestSchedulerHandlePanicOnInactive(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 2 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	inactiveAt := []time.Duration{}
+	options.onInactive = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		inactiveAt = append(inactiveAt, scheduler.clock.Since(startedAt))
+
+		panic("Something went really bad, but I am recovered.")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(1 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{},
+			},
+			{
+				at:         1,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{},
+				error:      NewPanicError("OnInactive", "Something went really bad, but I am recovered."),
+			},
+			{
+				at:         2,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{},
+				error:      NewPanicError("OnInactive", "Something went really bad, but I am recovered."),
+			},
+		},
+		map[int]time.Duration{},
+		map[int]time.Duration{},
+	)
+
+	expectedInactiveAt := []time.Duration{1 * time.Second}
+	if !reflect.DeepEqual(inactiveAt, expectedInactiveAt) {
+		t.Fatalf("OnInactive should have finished at %v, but was finished at %v", expectedInactiveAt, inactiveAt)
+	}
+
+	expectedCrashedAt := []time.Duration{2 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrash should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
+	}
+}
+
+func TestSchedulerHandlePanicOnLeaveInactive(t *testing.T) {
+	options := defaultSchedulerOptions()
+	options.inactivityDelay = 1 * time.Second
+	scheduler := NewScheduler(options, nil)
+	timeline := newTestTimelinesExample(
+		t,
+		scheduler,
+		[]testTimelineParams{},
+	)
+
+	startedAt := scheduler.clock.Now()
+
+	leftInactiveAt := []time.Duration{}
+	options.onLeaveInactive = func(scheduler *Scheduler) error {
+		scheduler.clock.Sleep(1 * time.Second)
+		leftInactiveAt = append(leftInactiveAt, scheduler.clock.Since(startedAt))
+
+		panic("Something went really bad, but I am recovered.")
+	}
+
+	crashedAt := []time.Duration{}
+	options.onCrash = func(scheduler *Scheduler) {
+		scheduler.clock.Sleep(1 * time.Second)
+		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
+	}
+
+	timeline.expects(
+		[]testTimelineExpectations{
+			{
+				at:         0,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{},
+			},
+			{
+				at:         1,
+				status:     InactiveStatus,
+				executions: []testExecutionStatus{},
+			},
+			{
+				at:         2,
+				status:     CrashedStatus,
+				executions: []testExecutionStatus{},
+				error:      NewPanicError("OnLeaveInactive", "Something went really bad, but I am recovered."),
+			},
+			{
+				at:         3,
+				status:     ClosedStatus,
+				executions: []testExecutionStatus{},
+				error:      NewPanicError("OnLeaveInactive", "Something went really bad, but I am recovered."),
+			},
+		},
+		map[int]time.Duration{},
+		map[int]time.Duration{},
+	)
+
+	expectedLeftInactiveAt := []time.Duration{2 * time.Second}
+	if !reflect.DeepEqual(leftInactiveAt, expectedLeftInactiveAt) {
+		t.Fatalf("OnLeaveInactive should have finished at %v, but was finished at %v", expectedLeftInactiveAt, leftInactiveAt)
+	}
+
+	expectedCrashedAt := []time.Duration{3 * time.Second}
+	if !reflect.DeepEqual(crashedAt, expectedCrashedAt) {
+		t.Fatalf("OnCrash should have finished at %v, but was finished at %v", expectedCrashedAt, crashedAt)
 	}
 }
