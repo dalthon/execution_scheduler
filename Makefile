@@ -34,6 +34,10 @@ test-%: ## Runs specific test
 	@$(call docker_run,$(IMAGE_NAME),$@,go test -run $*)
 .PHONY: test-%
 
+example: ## Runs examples/main.go
+	@$(call docker_run,$(IMAGE_NAME),$@,go run examples/main.go)
+.PHONY: example
+
 make-%: ## Runs make tasks
 	@$(call docker_run,$(IMAGE_NAME),$@,make $*)
 .PHONY: make-%
@@ -50,7 +54,3 @@ make-cover:
 	go tool cover -html=tmp/cover.out -o tmp/cover.html
 	@rm -rf tmp/cover.out
 .PHONY: make-cover
-
-debug: ## Runs debug/main.go
-	@$(call docker_run,$(IMAGE_NAME),$@,go run debug/main.go)
-.PHONY: debug
