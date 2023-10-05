@@ -13,13 +13,13 @@ import (
 )
 
 var startedAt time.Time
-var scheduler *s.Scheduler
+var scheduler *s.Scheduler[interface{}]
 
 func main() {
 	var waitGroup sync.WaitGroup
 
 	// Set all possible options
-	options := &s.Options{
+	options := &s.Options[interface{}]{
 		ExecutionTimeout: 4 * time.Second,
 		InactivityDelay:  5 * time.Second,
 		OnPrepare:        delayedErrorCallback("OnPrepare"),
@@ -39,7 +39,7 @@ func main() {
 	fmt.Println("\n[  STATUS  ] @ TIME          | MESSAGE")
 
 	// Initialize scheduler
-	scheduler = s.NewScheduler(options, &waitGroup)
+	scheduler = s.NewScheduler(options, nil, &waitGroup)
 	print("started!")
 
 	// Schedules all operations in another goroutine
@@ -133,7 +133,7 @@ func errorHandler(err error) error {
 
 // Callbacks
 
-func onClosingCallback(scheduler *s.Scheduler) error {
+func onClosingCallback(scheduler *s.Scheduler[any]) error {
 	print("running onClosing...")
 	time.Sleep(1 * time.Second)
 	print("finished onClosing with error!")
@@ -141,8 +141,8 @@ func onClosingCallback(scheduler *s.Scheduler) error {
 	return errors.New("closing errored!")
 }
 
-func delayedErrorCallback(name string) func(*s.Scheduler) error {
-	return func(scheduler *s.Scheduler) error {
+func delayedErrorCallback(name string) func(*s.Scheduler[any]) error {
+	return func(scheduler *s.Scheduler[any]) error {
 		print(fmt.Sprintf("running %s...", name))
 		time.Sleep(1 * time.Second)
 		print(fmt.Sprintf("finished %s!", name))
@@ -150,8 +150,8 @@ func delayedErrorCallback(name string) func(*s.Scheduler) error {
 	}
 }
 
-func delayedCallback(name string) func(*s.Scheduler) {
-	return func(scheduler *s.Scheduler) {
+func delayedCallback(name string) func(*s.Scheduler[any]) {
+	return func(scheduler *s.Scheduler[any]) {
 		print(fmt.Sprintf("running %s...", name))
 		time.Sleep(1 * time.Second)
 		print(fmt.Sprintf("finished %s!", name))
