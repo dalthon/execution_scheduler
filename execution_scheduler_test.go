@@ -479,7 +479,7 @@ func TestSchedulerSerialExpiration(t *testing.T) {
 		return nil
 	}
 
-	err := NewSchedulerNotRecovered()
+	err := newSchedulerNotRecovered()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -838,7 +838,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutions(t *testing.T) {
 				at:         5,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF, _esF},
-				error:      NewSchedulerNotRecovered(),
+				error:      newSchedulerNotRecovered(),
 			},
 		},
 		map[int]time.Duration{
@@ -898,7 +898,7 @@ func TestSchedulerLeavesErrorWhenNotRunningExecutionsWithError(t *testing.T) {
 				at:         5,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esF},
-				error:      NewSchedulerNotRecovered(),
+				error:      newSchedulerNotRecovered(),
 			},
 		},
 		map[int]time.Duration{
@@ -1258,7 +1258,7 @@ func TestSchedulerCrashedWithoutLeaveCallback(t *testing.T) {
 		crashedAt = append(crashedAt, scheduler.clock.Since(startedAt))
 	}
 
-	schedulerNotRecoveredErr := NewSchedulerNotRecovered()
+	schedulerNotRecoveredErr := newSchedulerNotRecovered()
 
 	timeline.expects(
 		[]testTimelineExpectations{
@@ -2693,7 +2693,7 @@ func TestSchedulerShutdownTwice(t *testing.T) {
 	scheduler.getClock().AfterFunc(2*time.Second, scheduler.Shutdown)
 	scheduler.getClock().AfterFunc(3*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -2765,7 +2765,7 @@ func TestSchedulerShutdownOnPending(t *testing.T) {
 
 	scheduler.getClock().AfterFunc(2*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -2828,7 +2828,7 @@ func TestSchedulerShutdownOnActive(t *testing.T) {
 	)
 	scheduler.getClock().AfterFunc(2*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -2888,7 +2888,7 @@ func TestSchedulerShutdownOnInactive(t *testing.T) {
 	scheduler.getClock().AfterFunc(3*time.Second, scheduler.Shutdown)
 	scheduler.getClock().AfterFunc(4*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -2960,7 +2960,7 @@ func TestSchedulerShutdownOnClosing(t *testing.T) {
 
 	scheduler.getClock().AfterFunc(6*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -3057,7 +3057,7 @@ func TestSchedulerShutdownOnCrashingWhileRunningExecutions(t *testing.T) {
 
 	scheduler.getClock().AfterFunc(4*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -3152,7 +3152,7 @@ func TestSchedulerShutdownOnCrashingWhileCallbackRunning(t *testing.T) {
 
 	scheduler.getClock().AfterFunc(5*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -3241,7 +3241,7 @@ func TestSchedulerShutdownOnErrorWhileRunning(t *testing.T) {
 	)
 
 	scheduler.getClock().AfterFunc(5*time.Second, scheduler.Shutdown)
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 
 	timeline.expects(
 		[]testTimelineExpectations{
@@ -3325,7 +3325,7 @@ func TestSchedulerShutdownOnErrorWhileCallbackRunning(t *testing.T) {
 
 	scheduler.getClock().AfterFunc(5*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -3420,7 +3420,7 @@ func TestSchedulerShutdownOnErrorWhileLeaveCallbackRunning(t *testing.T) {
 
 	scheduler.getClock().AfterFunc(5*time.Second, scheduler.Shutdown)
 
-	shutdownError := NewShutdownError()
+	shutdownError := newShutdownError()
 	timeline.expects(
 		[]testTimelineExpectations{
 			{
@@ -3733,7 +3733,7 @@ func TestSchedulerSerialExecutionExpireWhileRunning(t *testing.T) {
 				at:         8,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF, _esX, _esX, _esF},
-				error:      NewSchedulerNotRecovered(),
+				error:      newSchedulerNotRecovered(),
 			},
 		},
 		map[int]time.Duration{
@@ -5137,19 +5137,19 @@ func TestSchedulerShutdownOnInactiveCallback(t *testing.T) {
 				at:         5,
 				status:     ShutdownStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewShutdownError(),
+				error:      newShutdownError(),
 			},
 			{
 				at:         6,
 				status:     ShutdownStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewShutdownError(),
+				error:      newShutdownError(),
 			},
 			{
 				at:         7,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewShutdownError(),
+				error:      newShutdownError(),
 			},
 		},
 		map[int]time.Duration{0: 3 * time.Second},
@@ -5831,13 +5831,13 @@ func TestSchedulerHandlePanicOnPrepare(t *testing.T) {
 				at:         1,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{},
-				error:      NewPanicError("OnPrepare", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnPrepare", "Something went really bad, but I am recovered."),
 			},
 			{
 				at:         2,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{},
-				error:      NewPanicError("OnPrepare", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnPrepare", "Something went really bad, but I am recovered."),
 			},
 		},
 		map[int]time.Duration{},
@@ -5914,13 +5914,13 @@ func TestSchedulerHandlePanicOnClosing(t *testing.T) {
 				at:         5,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewPanicError("OnClosing", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnClosing", "Something went really bad, but I am recovered."),
 			},
 			{
 				at:         6,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewPanicError("OnClosing", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnClosing", "Something went really bad, but I am recovered."),
 			},
 		},
 		map[int]time.Duration{
@@ -5995,13 +5995,13 @@ func TestSchedulerHandlePanicOnError(t *testing.T) {
 				at:         4,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewPanicError("OnError", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnError", "Something went really bad, but I am recovered."),
 			},
 			{
 				at:         5,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewPanicError("OnError", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnError", "Something went really bad, but I am recovered."),
 			},
 		},
 		map[int]time.Duration{
@@ -6078,13 +6078,13 @@ func TestSchedulerHandlePanicOnLeaveError(t *testing.T) {
 				at:         4,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewPanicError("OnLeaveError", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnLeaveError", "Something went really bad, but I am recovered."),
 			},
 			{
 				at:         5,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{_esF},
-				error:      NewPanicError("OnLeaveError", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnLeaveError", "Something went really bad, but I am recovered."),
 			},
 		},
 		map[int]time.Duration{
@@ -6143,13 +6143,13 @@ func TestSchedulerHandlePanicOnInactive(t *testing.T) {
 				at:         1,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{},
-				error:      NewPanicError("OnInactive", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnInactive", "Something went really bad, but I am recovered."),
 			},
 			{
 				at:         2,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{},
-				error:      NewPanicError("OnInactive", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnInactive", "Something went really bad, but I am recovered."),
 			},
 		},
 		map[int]time.Duration{},
@@ -6209,13 +6209,13 @@ func TestSchedulerHandlePanicOnLeaveInactive(t *testing.T) {
 				at:         2,
 				status:     CrashedStatus,
 				executions: []testExecutionStatus{},
-				error:      NewPanicError("OnLeaveInactive", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnLeaveInactive", "Something went really bad, but I am recovered."),
 			},
 			{
 				at:         3,
 				status:     ClosedStatus,
 				executions: []testExecutionStatus{},
-				error:      NewPanicError("OnLeaveInactive", "Something went really bad, but I am recovered."),
+				error:      newPanicError("OnLeaveInactive", "Something went really bad, but I am recovered."),
 			},
 		},
 		map[int]time.Duration{},

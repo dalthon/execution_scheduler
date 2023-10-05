@@ -107,7 +107,7 @@ func newMockedScheduler() *mockedScheduler {
 }
 
 func (scheduler *mockedScheduler) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
-	return NewExecution(
+	return newExecution(
 		handler,
 		errorHandler,
 		kind,

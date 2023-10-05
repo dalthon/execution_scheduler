@@ -25,7 +25,7 @@ type Execution struct {
 	index        int
 }
 
-func NewExecution(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
+func newExecution(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
 	return &Execution{
 		Status:       ExecutionScheduled,
 		handler:      handler,
@@ -73,7 +73,7 @@ func (execution *Execution) recoverFromRunPanic(scheduler schedulerInterface) {
 	}
 
 	execution.Status = ExecutionFinished
-	execution.notifyScheduler(scheduler, NewPanicError("Execution", recovery), true)
+	execution.notifyScheduler(scheduler, newPanicError("Execution", recovery), true)
 }
 
 func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration) {
@@ -83,7 +83,7 @@ func (execution *Execution) setExpiration(scheduler schedulerInterface, duration
 			scheduler.getLock().Lock()
 			defer scheduler.getLock().Unlock()
 
-			execution.expire(scheduler, NewTimeoutError())
+			execution.expire(scheduler, newTimeoutError())
 		},
 	)
 }
@@ -116,7 +116,7 @@ func (execution *Execution) recoverFromExpirePanic(scheduler schedulerInterface)
 		return
 	}
 
-	execution.notifyScheduler(scheduler, NewPanicError("Execution", recovery), true)
+	execution.notifyScheduler(scheduler, newPanicError("Execution", recovery), true)
 }
 
 func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error, called bool) {

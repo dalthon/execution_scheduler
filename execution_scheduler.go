@@ -91,8 +91,8 @@ type Scheduler struct {
 	parallelRunning uint32
 	serialRunning   uint32
 	currentSerial   *Execution
-	parallelQueue   *ExecutionQueue
-	serialQueue     *ExecutionQueue
+	parallelQueue   *executionQueue
+	serialQueue     *executionQueue
 	events          chan ExecutionEvent
 	callbackRunning bool
 	clock           clockwork.Clock
@@ -108,8 +108,8 @@ func NewScheduler(options *SchedulerOptions, waitGroup *sync.WaitGroup) *Schedul
 		parallelRunning: 0,
 		serialRunning:   0,
 		currentSerial:   nil,
-		parallelQueue:   NewExecutionQueue(),
-		serialQueue:     NewExecutionQueue(),
+		parallelQueue:   newExecutionQueue(),
+		serialQueue:     newExecutionQueue(),
 		events:          make(chan ExecutionEvent, 16),
 		callbackRunning: false,
 		clock:           clockwork.NewRealClock(),
@@ -439,7 +439,7 @@ func (scheduler *Scheduler) execute() {
 }
 
 func (scheduler *Scheduler) cancelExecutions() {
-	err := NewSchedulerCrashedError()
+	err := newSchedulerCrashedError()
 
 	for execution := scheduler.parallelQueue.Pop(); execution != nil; execution = scheduler.parallelQueue.Pop() {
 		execution.expire(scheduler, err)
@@ -634,7 +634,7 @@ func (scheduler *Scheduler) runOnCrash() {
 }
 
 func (scheduler *Scheduler) runOnShutdown() {
-	scheduler.Err = NewShutdownError()
+	scheduler.Err = newShutdownError()
 	scheduler.tryToClose()
 }
 
@@ -651,7 +651,7 @@ func (scheduler *Scheduler) runOnLeaveErrorCallback() {
 
 	if scheduler.options.OnLeaveError == nil {
 		if scheduler.Err == nil {
-			scheduler.Err = NewSchedulerNotRecovered()
+			scheduler.Err = newSchedulerNotRecovered()
 		}
 		scheduler.signal(CrashedEvent)
 		return
@@ -706,7 +706,7 @@ func panicProofCallback(callback func(*Scheduler) error, target string) func(*Sc
 		go func() {
 			defer func() {
 				if recovery := recover(); recovery != nil {
-					errorChannel <- NewPanicError(target, recovery)
+					errorChannel <- newPanicError(target, recovery)
 				}
 			}()
 

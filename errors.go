@@ -7,7 +7,7 @@ import (
 type TimeoutError struct {
 }
 
-func NewTimeoutError() *TimeoutError {
+func newTimeoutError() *TimeoutError {
 	return &TimeoutError{}
 }
 
@@ -18,7 +18,7 @@ func (err *TimeoutError) Error() string {
 type SchedulerCrashedError struct {
 }
 
-func NewSchedulerCrashedError() *SchedulerCrashedError {
+func newSchedulerCrashedError() *SchedulerCrashedError {
 	return &SchedulerCrashedError{}
 }
 
@@ -29,7 +29,7 @@ func (err *SchedulerCrashedError) Error() string {
 type SchedulerNotRecovered struct {
 }
 
-func NewSchedulerNotRecovered() *SchedulerNotRecovered {
+func newSchedulerNotRecovered() *SchedulerNotRecovered {
 	return &SchedulerNotRecovered{}
 }
 
@@ -40,7 +40,7 @@ func (err *SchedulerNotRecovered) Error() string {
 type ShutdownError struct {
 }
 
-func NewShutdownError() *ShutdownError {
+func newShutdownError() *ShutdownError {
 	return &ShutdownError{}
 }
 
@@ -53,7 +53,7 @@ type PanicError struct {
 	panic  interface{}
 }
 
-func NewPanicError(target string, p interface{}) *PanicError {
+func newPanicError(target string, p interface{}) *PanicError {
 	return &PanicError{
 		target: target,
 		panic:  p,

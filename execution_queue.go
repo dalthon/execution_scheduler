@@ -2,19 +2,19 @@ package execution_scheduler
 
 import "container/heap"
 
-// Attention: ExecutionQueue is not thread safe!
-type ExecutionQueue struct {
-	queue PriorityQueue
+// Attention: executionQueue is not thread safe!
+type executionQueue struct {
+	queue priorityQueue
 }
 
-func NewExecutionQueue() *ExecutionQueue {
-	return &ExecutionQueue{
-		queue: make(PriorityQueue, 0),
+func newExecutionQueue() *executionQueue {
+	return &executionQueue{
+		queue: make(priorityQueue, 0),
 	}
 }
 
-func (queue *ExecutionQueue) Push(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
-	execution := NewExecution(
+func (queue *executionQueue) Push(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
+	execution := newExecution(
 		handler,
 		errorHandler,
 		kind,
@@ -26,11 +26,11 @@ func (queue *ExecutionQueue) Push(handler func() error, errorHandler func(error)
 	return execution
 }
 
-func (queue *ExecutionQueue) Size() int {
+func (queue *executionQueue) Size() int {
 	return len(queue.queue)
 }
 
-func (queue *ExecutionQueue) Top() *Execution {
+func (queue *executionQueue) Top() *Execution {
 	if len(queue.queue) == 0 {
 		return nil
 	}
@@ -38,7 +38,7 @@ func (queue *ExecutionQueue) Top() *Execution {
 	return queue.queue[0]
 }
 
-func (queue *ExecutionQueue) Pop() *Execution {
+func (queue *executionQueue) Pop() *Execution {
 	if len(queue.queue) == 0 {
 		return nil
 	}
@@ -46,7 +46,7 @@ func (queue *ExecutionQueue) Pop() *Execution {
 	return (heap.Pop(&queue.queue).(*Execution))
 }
 
-func (queue *ExecutionQueue) PopPriority(priority int) *Execution {
+func (queue *executionQueue) PopPriority(priority int) *Execution {
 	if len(queue.queue) == 0 || queue.Top().priority <= priority {
 		return nil
 	}
@@ -54,36 +54,36 @@ func (queue *ExecutionQueue) PopPriority(priority int) *Execution {
 	return (heap.Pop(&queue.queue).(*Execution))
 }
 
-func (queue *ExecutionQueue) Remove(execution *Execution) {
+func (queue *executionQueue) Remove(execution *Execution) {
 	if execution.index != -1 {
 		heap.Remove(&queue.queue, execution.index)
 	}
 }
 
-type PriorityQueue []*Execution
+type priorityQueue []*Execution
 
-func (queue PriorityQueue) Len() int { return len(queue) }
+func (queue priorityQueue) Len() int { return len(queue) }
 
-func (queue PriorityQueue) Less(i, j int) bool {
+func (queue priorityQueue) Less(i, j int) bool {
 	// We want Pop to give us the highest priority, not lowest
 	// Then we return greatest instead of lowest here
 	return queue[i].priority > queue[j].priority
 }
 
-func (queue PriorityQueue) Swap(i, j int) {
+func (queue priorityQueue) Swap(i, j int) {
 	queue[i], queue[j] = queue[j], queue[i]
 	queue[i].index = i
 	queue[j].index = j
 }
 
-func (queue *PriorityQueue) Push(item any) {
+func (queue *priorityQueue) Push(item any) {
 	n := len(*queue)
 	execution := item.(*Execution)
 	execution.index = n
 	*queue = append(*queue, execution)
 }
 
-func (queue *PriorityQueue) Pop() any {
+func (queue *priorityQueue) Pop() any {
 	oldQueue := *queue
 	size := len(oldQueue)
 	execution := oldQueue[size-1]
