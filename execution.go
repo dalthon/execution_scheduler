@@ -15,18 +15,18 @@ const (
 	ExecutionFinished
 )
 
-type Execution struct {
+type Execution[C any] struct {
 	Status       ExecutionStatus
-	handler      func() error
-	errorHandler func(error) error
+	handler      func(C) error
+	errorHandler func(C, error) error
 	priority     int
 	kind         ExecutionKind
 	timer        clockwork.Timer
 	index        int
 }
 
-func newExecution(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
-	return &Execution{
+func newExecution[C any](handler func(C) error, errorHandler func(C, error) error, kind ExecutionKind, priority int) *Execution[C] {
+	return &Execution[C]{
 		Status:       ExecutionScheduled,
 		handler:      handler,
 		errorHandler: errorHandler,
@@ -37,7 +37,7 @@ func newExecution(handler func() error, errorHandler func(error) error, kind Exe
 	}
 }
 
-func (execution *Execution) call(scheduler schedulerInterface) bool {
+func (execution *Execution[C]) call(scheduler schedulerInterface[C]) bool {
 	if execution.Status != ExecutionScheduled {
 		return false
 	}
@@ -53,20 +53,20 @@ func (execution *Execution) call(scheduler schedulerInterface) bool {
 	return true
 }
 
-func (execution *Execution) run(scheduler schedulerInterface) {
+func (execution *Execution[C]) run(scheduler schedulerInterface[C]) {
 	defer execution.recoverFromRunPanic(scheduler)
 
-	err := (panicProofHandler(execution.handler))()
+	err := (panicProofHandler(execution.handler))(scheduler.getContext())
 
 	if err != nil {
-		err = execution.errorHandler(err)
+		err = execution.errorHandler(scheduler.getContext(), err)
 	}
 
 	execution.Status = ExecutionFinished
 	execution.notifyScheduler(scheduler, err, true)
 }
 
-func (execution *Execution) recoverFromRunPanic(scheduler schedulerInterface) {
+func (execution *Execution[C]) recoverFromRunPanic(scheduler schedulerInterface[C]) {
 	recovery := recover()
 	if recovery == nil {
 		return
@@ -76,7 +76,7 @@ func (execution *Execution) recoverFromRunPanic(scheduler schedulerInterface) {
 	execution.notifyScheduler(scheduler, newPanicError("Execution", recovery), true)
 }
 
-func (execution *Execution) setExpiration(scheduler schedulerInterface, duration time.Duration) {
+func (execution *Execution[C]) setExpiration(scheduler schedulerInterface[C], duration time.Duration) {
 	execution.timer = scheduler.getClock().AfterFunc(
 		duration,
 		func() {
@@ -89,7 +89,7 @@ func (execution *Execution) setExpiration(scheduler schedulerInterface, duration
 }
 
 // TODO: Think about TimeoutError not changing scheduler status to Error
-func (execution *Execution) expire(scheduler schedulerInterface, err error) bool {
+func (execution *Execution[C]) expire(scheduler schedulerInterface[C], err error) bool {
 	if execution.Status == ExecutionScheduled {
 		execution.Status = ExecutionExpired
 		if execution.timer != nil {
@@ -101,7 +101,7 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 		scheduler.beforeExpireCall(execution)
 		go func() {
 			defer execution.recoverFromExpirePanic(scheduler)
-			err := execution.errorHandler(err)
+			err := execution.errorHandler(scheduler.getContext(), err)
 			execution.notifyScheduler(scheduler, err, false)
 		}()
 		return true
@@ -110,7 +110,7 @@ func (execution *Execution) expire(scheduler schedulerInterface, err error) bool
 	return false
 }
 
-func (execution *Execution) recoverFromExpirePanic(scheduler schedulerInterface) {
+func (execution *Execution[C]) recoverFromExpirePanic(scheduler schedulerInterface[C]) {
 	recovery := recover()
 	if recovery == nil {
 		return
@@ -119,7 +119,7 @@ func (execution *Execution) recoverFromExpirePanic(scheduler schedulerInterface)
 	execution.notifyScheduler(scheduler, newPanicError("Execution", recovery), true)
 }
 
-func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err error, called bool) {
+func (execution *Execution[C]) notifyScheduler(scheduler schedulerInterface[C], err error, called bool) {
 	if execution.kind == Parallel {
 		if err == nil {
 			scheduler.signal(finishedParallelEvent)
@@ -145,8 +145,8 @@ func (execution *Execution) notifyScheduler(scheduler schedulerInterface, err er
 	}
 }
 
-func panicProofHandler(callback func() error) func() error {
-	return func() error {
+func panicProofHandler[C any](callback func(C) error) func(C) error {
+	return func(context C) error {
 		errorChannel := make(chan error)
 
 		go func() {
@@ -156,7 +156,7 @@ func panicProofHandler(callback func() error) func() error {
 				}
 			}()
 
-			err := callback()
+			err := callback(context)
 			errorChannel <- err
 		}()
 

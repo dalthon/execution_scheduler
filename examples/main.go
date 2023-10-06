@@ -12,14 +12,18 @@ import (
 	s "github.com/dalthon/execution_scheduler"
 )
 
+type Ctx struct {
+	previousMessage string
+}
+
 var startedAt time.Time
-var scheduler *s.Scheduler[interface{}]
+var scheduler *s.Scheduler[*Ctx]
 
 func main() {
 	var waitGroup sync.WaitGroup
 
 	// Set all possible options
-	options := &s.Options[interface{}]{
+	options := &s.Options[*Ctx]{
 		ExecutionTimeout: 4 * time.Second,
 		InactivityDelay:  5 * time.Second,
 		OnPrepare:        delayedErrorCallback("OnPrepare"),
@@ -39,7 +43,7 @@ func main() {
 	fmt.Println("\n[  STATUS  ] @ TIME          | MESSAGE")
 
 	// Initialize scheduler
-	scheduler = s.NewScheduler(options, nil, &waitGroup)
+	scheduler = s.NewScheduler(options, &Ctx{previousMessage: "there was no previous"}, &waitGroup)
 	print("started!")
 
 	// Schedules all operations in another goroutine
@@ -85,55 +89,65 @@ func main() {
 
 // Handler generators
 
-func printMessage(message string) func() error {
+func printMessage(message string) func(*Ctx) error {
 	return printSlowMessage(1, message)
 }
 
-func printSlowMessage(delay int, message string) func() error {
-	return func() error {
+func printSlowMessage(delay int, message string) func(*Ctx) error {
+	return func(ctx *Ctx) error {
 		time.Sleep(time.Duration(delay) * time.Second)
+		print(fmt.Sprintf("Previous message was: \"%s\"", ctx.previousMessage))
 		print(message)
+		ctx.previousMessage = message
 		return nil
 	}
 }
 
-func raiseError(message string) func() error {
+func raiseError(message string) func(*Ctx) error {
 	return raiseSlowError(1, message)
 }
 
-func raiseSlowError(delay int, message string) func() error {
-	return func() error {
+func raiseSlowError(delay int, message string) func(*Ctx) error {
+	return func(ctx *Ctx) error {
 		time.Sleep(time.Duration(delay) * time.Second)
+		print(fmt.Sprintf("Previous message was: \"%s\"", ctx.previousMessage))
 		print(message)
+		ctx.previousMessage = message
 		return errors.New(message)
 	}
 }
 
 // Simple handlers
 
-func noopErrorHandler(err error) error {
+func noopErrorHandler(ctx *Ctx, err error) error {
 	message := fmt.Sprintf("Received error %v", err)
+	print(fmt.Sprintf("Previous message was: \"%s\"", ctx.previousMessage))
 	print(message)
+	ctx.previousMessage = message
 	return nil
 }
 
-func errorHandlerWithTarget(target string) func(error) error {
-	return func(err error) error {
+func errorHandlerWithTarget(target string) func(*Ctx, error) error {
+	return func(ctx *Ctx, err error) error {
 		message := fmt.Sprintf("Received error \"%v\" on \"%s\"", err, target)
+		print(fmt.Sprintf("Previous message was: \"%s\"", ctx.previousMessage))
 		print(message)
+		ctx.previousMessage = message
 		return errors.New(message)
 	}
 }
 
-func errorHandler(err error) error {
+func errorHandler(ctx *Ctx, err error) error {
 	message := fmt.Sprintf("Received error \"%v\"", err)
+	print(fmt.Sprintf("Previous message was: \"%s\"", ctx.previousMessage))
 	print(message)
+	ctx.previousMessage = message
 	return errors.New(message)
 }
 
 // Callbacks
 
-func onClosingCallback(scheduler *s.Scheduler[any]) error {
+func onClosingCallback(scheduler *s.Scheduler[*Ctx]) error {
 	print("running onClosing...")
 	time.Sleep(1 * time.Second)
 	print("finished onClosing with error!")
@@ -141,8 +155,8 @@ func onClosingCallback(scheduler *s.Scheduler[any]) error {
 	return errors.New("closing errored!")
 }
 
-func delayedErrorCallback(name string) func(*s.Scheduler[any]) error {
-	return func(scheduler *s.Scheduler[any]) error {
+func delayedErrorCallback(name string) func(*s.Scheduler[*Ctx]) error {
+	return func(*s.Scheduler[*Ctx]) error {
 		print(fmt.Sprintf("running %s...", name))
 		time.Sleep(1 * time.Second)
 		print(fmt.Sprintf("finished %s!", name))
@@ -150,8 +164,8 @@ func delayedErrorCallback(name string) func(*s.Scheduler[any]) error {
 	}
 }
 
-func delayedCallback(name string) func(*s.Scheduler[any]) {
-	return func(scheduler *s.Scheduler[any]) {
+func delayedCallback(name string) func(*s.Scheduler[*Ctx]) {
+	return func(*s.Scheduler[*Ctx]) {
 		print(fmt.Sprintf("running %s...", name))
 		time.Sleep(1 * time.Second)
 		print(fmt.Sprintf("finished %s!", name))

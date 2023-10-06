@@ -89,24 +89,25 @@ func schedulerStatusToString(status Status) string {
 	}
 }
 
-type mockedScheduler struct {
+type mockedScheduler[C any] struct {
 	lock                     sync.Mutex
 	events                   []schedulerEvent
-	removedExecutions        []*Execution
+	removedExecutions        []*Execution[C]
 	clock                    clockwork.Clock
+	context                  C
 	beforeExecutionCallCount uint64
 	beforeExpireCallCount    uint64
 }
 
-func newMockedScheduler() *mockedScheduler {
-	return &mockedScheduler{
+func newMockedScheduler[C any]() *mockedScheduler[C] {
+	return &mockedScheduler[C]{
 		clock:                    clockwork.NewFakeClock(),
 		beforeExecutionCallCount: 0,
 		beforeExpireCallCount:    0,
 	}
 }
 
-func (scheduler *mockedScheduler) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
+func (scheduler *mockedScheduler[C]) Schedule(handler func(C) error, errorHandler func(C, error) error, kind ExecutionKind, priority int) *Execution[C] {
 	return newExecution(
 		handler,
 		errorHandler,
@@ -115,31 +116,35 @@ func (scheduler *mockedScheduler) Schedule(handler func() error, errorHandler fu
 	)
 }
 
-func (scheduler *mockedScheduler) beforeExecutionCall(execution *Execution) {
+func (scheduler *mockedScheduler[C]) beforeExecutionCall(execution *Execution[C]) {
 	scheduler.beforeExecutionCallCount += 1
 }
 
-func (scheduler *mockedScheduler) beforeExpireCall(execution *Execution) {
+func (scheduler *mockedScheduler[C]) beforeExpireCall(execution *Execution[C]) {
 	scheduler.beforeExpireCallCount += 1
 }
 
-func (scheduler *mockedScheduler) getLock() *sync.Mutex {
+func (scheduler *mockedScheduler[C]) getLock() *sync.Mutex {
 	return &scheduler.lock
 }
 
-func (scheduler *mockedScheduler) getClock() clockwork.Clock {
+func (scheduler *mockedScheduler[C]) getClock() clockwork.Clock {
 	return scheduler.clock
 }
 
-func (scheduler *mockedScheduler) signal(event schedulerEvent) {
+func (scheduler *mockedScheduler[C]) getContext() C {
+	return scheduler.context
+}
+
+func (scheduler *mockedScheduler[C]) signal(event schedulerEvent) {
 	scheduler.events = append(scheduler.events, event)
 }
 
-func (scheduler *mockedScheduler) remove(execution *Execution) {
+func (scheduler *mockedScheduler[C]) remove(execution *Execution[C]) {
 	scheduler.removedExecutions = append(scheduler.removedExecutions, execution)
 }
 
-func (scheduler *mockedScheduler) advance(duration time.Duration) {
+func (scheduler *mockedScheduler[C]) advance(duration time.Duration) {
 	scheduler.clock.(clockwork.FakeClock).Advance(duration)
 	waitForAllGoroutines()
 }
@@ -164,7 +169,7 @@ func newSimpleHandlers(t *testing.T, maxCount int) *simpleHandlers {
 	}
 }
 
-func (pair *simpleHandlers) handler() error {
+func (pair *simpleHandlers) handler(_ any) error {
 	if pair.handlerCount > pair.maxCount {
 		pair.t.Fatalf("simple handler should not be called more than %d", pair.maxCount)
 	}
@@ -173,7 +178,7 @@ func (pair *simpleHandlers) handler() error {
 	return nil
 }
 
-func (pair *simpleHandlers) errorHandler(err error) error {
+func (pair *simpleHandlers) errorHandler(_ any, err error) error {
 	if pair.errorHandlerCount > pair.maxCount {
 		pair.t.Fatalf("simple handler error should not be called more than %d", pair.maxCount)
 	}
@@ -292,10 +297,10 @@ func (timelines *testTimelinesExample[C]) expects(expectations []testTimelineExp
 
 	calledAt := make(map[int]time.Duration)
 	erroredAt := make(map[int]time.Duration)
-	executions := make([]*Execution, len(timelines.params))
+	executions := make([]*Execution[C], len(timelines.params))
 	scheduleExecution := func(params testTimelineParams, index int) {
 		executions[index] = timelines.scheduler.Schedule(
-			func() error {
+			func(_ C) error {
 				lock.Lock()
 				calledAt[index] = clock.Since(startedAt)
 				lock.Unlock()
@@ -305,7 +310,7 @@ func (timelines *testTimelinesExample[C]) expects(expectations []testTimelineExp
 				}
 				return params.handler.result
 			},
-			func(err error) error {
+			func(_ C, err error) error {
 				lock.Lock()
 				erroredAt[index] = clock.Since(startedAt)
 				lock.Unlock()

@@ -68,14 +68,15 @@ const (
 	expiredSerialEvent
 )
 
-type schedulerInterface interface {
-	beforeExecutionCall(execution *Execution)
-	beforeExpireCall(execution *Execution)
+type schedulerInterface[C any] interface {
+	beforeExecutionCall(execution *Execution[C])
+	beforeExpireCall(execution *Execution[C])
 	getLock() *sync.Mutex
 	getClock() clockwork.Clock
+	getContext() C
 	signal(event schedulerEvent)
-	remove(execution *Execution)
-	Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution
+	remove(execution *Execution[C])
+	Schedule(handler func(C) error, errorHandler func(C, error) error, kind ExecutionKind, priority int) *Execution[C]
 }
 
 type Options[C any] struct {
@@ -99,9 +100,9 @@ type Scheduler[C any] struct {
 	lock            sync.Mutex
 	parallelRunning uint32
 	serialRunning   uint32
-	currentSerial   *Execution
-	parallelQueue   *executionQueue
-	serialQueue     *executionQueue
+	currentSerial   *Execution[C]
+	parallelQueue   *executionQueue[C]
+	serialQueue     *executionQueue[C]
 	events          chan schedulerEvent
 	callbackRunning bool
 	clock           clockwork.Clock
@@ -118,8 +119,8 @@ func NewScheduler[C any](options *Options[C], context C, waitGroup *sync.WaitGro
 		parallelRunning: 0,
 		serialRunning:   0,
 		currentSerial:   nil,
-		parallelQueue:   newExecutionQueue(),
-		serialQueue:     newExecutionQueue(),
+		parallelQueue:   newExecutionQueue[C](),
+		serialQueue:     newExecutionQueue[C](),
 		events:          make(chan schedulerEvent, 16),
 		callbackRunning: false,
 		clock:           clockwork.NewRealClock(),
@@ -134,11 +135,11 @@ func NewScheduler[C any](options *Options[C], context C, waitGroup *sync.WaitGro
 	return scheduler
 }
 
-func (scheduler *Scheduler[C]) Schedule(handler func() error, errorHandler func(error) error, kind ExecutionKind, priority int) *Execution {
+func (scheduler *Scheduler[C]) Schedule(handler func(C) error, errorHandler func(C, error) error, kind ExecutionKind, priority int) *Execution[C] {
 	scheduler.lock.Lock()
 	defer scheduler.lock.Unlock()
 
-	var execution *Execution
+	var execution *Execution[C]
 	if kind == Parallel {
 		execution = scheduler.parallelQueue.Push(
 			handler,
@@ -460,7 +461,7 @@ func (scheduler *Scheduler[C]) cancelExecutions() {
 	}
 }
 
-func (scheduler *Scheduler[C]) beforeExecutionCall(execution *Execution) {
+func (scheduler *Scheduler[C]) beforeExecutionCall(execution *Execution[C]) {
 	if execution.kind == Parallel {
 		scheduler.parallelRunning += 1
 		return
@@ -470,7 +471,7 @@ func (scheduler *Scheduler[C]) beforeExecutionCall(execution *Execution) {
 	scheduler.serialRunning += 1
 }
 
-func (scheduler *Scheduler[C]) beforeExpireCall(execution *Execution) {
+func (scheduler *Scheduler[C]) beforeExpireCall(execution *Execution[C]) {
 	if execution.kind == Parallel {
 		scheduler.parallelRunning += 1
 		return
@@ -487,11 +488,15 @@ func (scheduler *Scheduler[C]) getClock() clockwork.Clock {
 	return scheduler.clock
 }
 
+func (scheduler *Scheduler[C]) getContext() C {
+	return scheduler.Context
+}
+
 func (scheduler *Scheduler[C]) signal(event schedulerEvent) {
 	scheduler.events <- event
 }
 
-func (scheduler *Scheduler[C]) remove(execution *Execution) {
+func (scheduler *Scheduler[C]) remove(execution *Execution[C]) {
 	if execution.kind == Parallel {
 		scheduler.parallelQueue.Remove(execution)
 	} else {

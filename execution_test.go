@@ -10,7 +10,7 @@ import (
 )
 
 func TestExecutionCalling(t *testing.T) {
-	scheduler := newMockedScheduler()
+	scheduler := newMockedScheduler[any]()
 	handler := newSimpleHandlers(t, 1)
 	execution := newExecution(handler.handler, handler.errorHandler, Parallel, 0)
 	goroutineCount := runtime.NumGoroutine()
@@ -74,7 +74,7 @@ func TestExecutionCalling(t *testing.T) {
 }
 
 func TestExecutionExpiration(t *testing.T) {
-	scheduler := newMockedScheduler()
+	scheduler := newMockedScheduler[any]()
 	handler := newSimpleHandlers(t, 1)
 	execution := newExecution(handler.handler, handler.errorHandler, Parallel, 0)
 	goroutineCount := runtime.NumGoroutine()
@@ -132,7 +132,7 @@ func TestExecutionExpiration(t *testing.T) {
 }
 
 func TestExecutionCallingBeforeExpire(t *testing.T) {
-	scheduler := newMockedScheduler()
+	scheduler := newMockedScheduler[any]()
 	handler := newSimpleHandlers(t, 1)
 	execution := newExecution(handler.handler, handler.errorHandler, Parallel, 0)
 	goroutineCount := runtime.NumGoroutine()

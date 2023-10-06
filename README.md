@@ -10,8 +10,18 @@ quickly how to configure advanced behaviour.
 
 ## Examples
 
-Simplest case, also available at [examples/01-simple.go](examples/01-simple.go), call
-function `handler` 3 times in parallel.
+At [examples/](examples) we have many examples described and ordered below to
+ilustrate all features of this module.
+
+In order to run them locally, you just need Docker installed, run `make build`
+to setup development docker image and then you are ready to execute any example
+by its number by running `make example-NUMBER`, e.g. `make example-01`.
+
+Also you can run the fully featured [examples/main.go](examples/main.go) that
+uses all features at once with `make example`.
+
+Simplest case, also available at [examples/01-simple.go](examples/01-simple.go),
+call function `handler` 3 times in parallel.
 
 ```go
 package main
@@ -44,14 +54,14 @@ func main() {
   waitGroup.Wait()
 }
 
-func handler() error {
+func handler(_ interface{}) error {
   time.Sleep(1 * time.Second)
   count++
   fmt.Printf("message #%d!\n", count)
   return nil
 }
 
-func errorHandler(err error) error {
+func errorHandler(_ interface{}, err error) error {
   return nil
 }
 ```
@@ -78,12 +88,13 @@ Highest number, highest priority, so bigger runs first.
   scheduler.Schedule(handler(3), errorHandler, s.Serial, 3)
 
   // ...
-  func handler(value int) func() error {
-    return func() error {
+  func handler(value int) func(interface{}) error {
+    return func(_ interface{}) error {
       time.Sleep(1 * time.Second)
       fmt.Printf("message #%d!\n", value)
       return nil
     }
+  }
   }
 ```
 
@@ -140,8 +151,8 @@ It is exactly what you suspected! In case first handler errors or even panics
 as you can see at [examples/06-error.go](examples/06-error.go).
 
 ```go
-  func handler(value int) func() error {
-    return func() error {
+  func handler(value int) func(interface{}) error {
+    return func(_ interface{}) error {
       time.Sleep(1 * time.Second)
       fmt.Printf("message #%d!\n", value)
 
@@ -153,7 +164,7 @@ as you can see at [examples/06-error.go](examples/06-error.go).
     }
   }
 
-  func errorHandler(err error) error {
+  func errorHandler(_ interface{}, err error) error {
     fmt.Printf("recovered error: \"%v\"\n", err)
     time.Sleep(1 * time.Second)
     return nil
@@ -175,6 +186,57 @@ as you can see at [examples/06-error.go](examples/06-error.go).
   // message #1!
   // recovered error: "Execution panicked with: Odd panics!"
 ```
+
+A sharp pair of eyes maybe could be wondering why we have in all those examples
+so far this `interface{}` being passed as generic on options and handlers.
+
+Also there is this second param of `s.NewScheduler` that is always `nil`...
+
+So both are related!
+
+Second argument of `s.NewScheduler` is a context object that is passed to
+scheduler so it can be shared across many executions.
+
+This is also the reason why Scheduler has generics, in case you have noticed.
+
+One example of use of this context is given at
+[examples/07-context.go](examples/07-context.go) as you can see below:
+
+```go
+  type CounterCtx struct {
+    count uint
+  }
+
+    // Initialize scheduler
+    scheduler := s.NewScheduler(&s.Options[*CounterCtx]{}, &CounterCtx{count: 0}, &waitGroup)
+
+  func handler(value int) func(*CounterCtx) error {
+    return func(counter *CounterCtx) error {
+      time.Sleep(1 * time.Second)
+      fmt.Printf("message #%d! so far we had %d other messages!\n", value, counter.count)
+      counter.count++
+      return nil
+    }
+  }
+
+  func errorHandler(_ *CounterCtx, err error) error {
+    return nil
+  }
+
+  // outputs:
+  // message #0! so far we had 0 other messages!
+  // message #5! so far we had 1 other messages!
+  // message #3! so far we had 1 other messages!
+  // message #6! so far we had 2 other messages!
+  // message #4! so far we had 1 other messages!
+  // message #2! so far we had 5 other messages!
+  // message #1! so far we had 6 other messages!
+```
+
+By the output of [examples/07-context.go](examples/07-context.go) you can also
+notice that given context is shared in a not thread-safe way. So you need to
+make sure that its interface is thread safe taking care by yourself of mutexes
+or whatever you may need to ensure that.
 
 Going back to initialization of scheduler, you may have noticed that there are
 `Options`.

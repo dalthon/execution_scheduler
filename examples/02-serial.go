@@ -28,13 +28,13 @@ func main() {
 	waitGroup.Wait()
 }
 
-func handler() error {
+func handler(_ interface{}) error {
 	time.Sleep(1 * time.Second)
 	count++
 	fmt.Printf("message #%d!\n", count)
 	return nil
 }
 
-func errorHandler(err error) error {
+func errorHandler(_ interface{}, err error) error {
 	return nil
 }

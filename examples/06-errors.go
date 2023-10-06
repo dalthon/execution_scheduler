@@ -29,10 +29,16 @@ func main() {
 
 	// Wait for scheduler to finish
 	waitGroup.Wait()
+
+	if scheduler.Err == nil {
+		fmt.Println("Finished successfully")
+	} else {
+		fmt.Printf("This should never happen, error: \"%v\"\n", scheduler.Err)
+	}
 }
 
-func handler(value int) func() error {
-	return func() error {
+func handler(value int) func(interface{}) error {
+	return func(_ interface{}) error {
 		time.Sleep(1 * time.Second)
 		fmt.Printf("message #%d!\n", value)
 
@@ -44,7 +50,7 @@ func handler(value int) func() error {
 	}
 }
 
-func errorHandler(err error) error {
+func errorHandler(_ interface{}, err error) error {
 	fmt.Printf("recovered error: \"%v\"\n", err)
 	time.Sleep(1 * time.Second)
 	return nil

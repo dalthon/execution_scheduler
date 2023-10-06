@@ -38,6 +38,11 @@ example: ## Runs examples/main.go
 	@$(call docker_run,$(IMAGE_NAME),$@,go run examples/main.go)
 .PHONY: example
 
+example-%: ## Runs an example from folder examples by number
+	@$(eval EXAMPLE := $(shell ls examples/$*-* | head -n 1))
+	@$(call docker_run,$(IMAGE_NAME),$@,go run $(EXAMPLE))
+.PHONY: example-%
+
 make-%: ## Runs make tasks
 	@$(call docker_run,$(IMAGE_NAME),$@,make $*)
 .PHONY: make-%
